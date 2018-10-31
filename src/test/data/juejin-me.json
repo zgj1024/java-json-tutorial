@@ -1,0 +1,57 @@
+{
+  "s": 1,
+  "m": "ok",
+  "d": {
+    "role": "guest",
+    "username": "\u6316\u5751\u82f1\u96c4\u5c0f\u738b",
+    "selfDescription": "\u64c5\u957f\u6316\u5751\u3001\u586b\u81ea\u5df1\u8fdb\u53bb",
+    "email": "",
+    "mobilePhoneNumber": "",
+    "jobTitle": "\u9996\u5e2d\u6316\u5751\u5458",
+    "company": "\u4e3a\u5458\u5de5\u586b\u5751\u6709\u9650\u516c\u53f8",
+    "avatarHd": "",
+    "avatarLarge": "https:\/\/user-gold-cdn.xitu.io\/2018\/1\/9\/160d8fa064826583?w=1236&h=1209&f=png&s=1280954",
+    "blogAddress": "blog.zhangguojian.com",
+    "deviceType": "auth_center",
+    "editorType": "markdown",
+    "allowNotification": true,
+    "emailVerified": false,
+    "mobilePhoneVerified": false,
+    "isAuthor": false,
+    "isUnitedAuthor": false,
+    "blacklist": false,
+    "followeesCount": 4,
+    "followersCount": 2,
+    "postedPostsCount": 3,
+    "postedEntriesCount": 0,
+    "collectedEntriesCount": 0,
+    "viewedEntriesCount": 100,
+    "subscribedTagsCount": 22,
+    "totalCollectionsCount": 0,
+    "totalHotIndex": 0,
+    "totalCommentsCount": 0,
+    "collectionSetCount": 1,
+    "latestLoginedInAt": "2018-10-15T14:16:03.217Z",
+    "createdAt": "2017-10-13T08:04:51.035Z",
+    "updatedAt": "2018-10-30T02:03:25.653Z",
+    "useLeancloudPwd": false,
+    "pinCount": 0,
+    "totalViewsCount": 26,
+    "community": {
+      "github": {
+        "username": "zgj1024",
+        "avatarLarge": "https:\/\/avatars1.githubusercontent.com\/u\/8766664?v=4",
+        "blogAddress": "http:\/\/www.zhangguojian.com",
+        "company": null,
+        "uid": "8766664"
+      },
+      "wechat": {
+        "username": "\u6ce2\u5c14\u591a",
+        "avatarLarge": "http:\/\/thirdwx.qlogo.cn\/mmopen\/vi_32\/znic0v9CJtscRvSIdhUicX7Z1cgCiaKqwVHbTm2mJwFmDZV9ibBGX1To2XYR2WuUZ78EsZvWe7DhqNn9FFZVpJEs3w\/132",
+        "uid": "xxxxxxxxxxxxxxxxxxxx"
+      }
+    },
+    "objectId": "xxxxxxxxxxxxxxxxxxxx",
+    "uid": "xxxxxxxxxxxxxxxxxxxx"
+  }
+}
