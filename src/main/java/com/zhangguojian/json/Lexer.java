@@ -16,14 +16,33 @@ public class Lexer {
         nextChar();
     }
 
-    private void ws() {
-        while (c == ' ' || c == '\t' || c == '\r' || c == '\n')
-            nextChar();
-    }
-
-    private boolean isSeparatorChar() {
-        return c == ' ' || c == ',' || c == '}' || c == ']' || c == '\n' || c == '\r' || c == '\t' || c == EOF
-                || c == '\f' || c == '\b';
+    public Token getNextToken() throws InvalidCharacterException {
+        while (c != EOF) {
+            switch (c) {
+                case '\r':
+                case '\n':
+                case '\t':
+                case ' ':
+                    ws();
+                    break;
+                case 'n':
+                    return scanNull();
+                case 'f':
+                    return scanFalse();
+                case 't':
+                    return scanTrue();
+                case '\"':
+                    return scanString();
+                case '-':
+                    return scanNum();
+                default:
+                    if(isDigit()){
+                        return scanNum();
+                    }
+                    throw new InvalidCharacterException("invalid character: " + c);
+            }
+        }
+        return Token.EOF;
     }
 
     private Token scanText(String keyword, Token token) throws InvalidCharacterException {
@@ -73,11 +92,6 @@ public class Lexer {
         }
 
         throw new InvalidCharacterException("invalid token: " + sb.toString());
-    }
-
-
-    private boolean isHex() {
-        return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
     }
 
     private void ESCAPE(StringBuilder sb) throws InvalidCharacterException {
@@ -132,29 +146,92 @@ public class Lexer {
         nextChar();
     }
 
-    public Token getNextToken() throws InvalidCharacterException {
-        while (c != EOF) {
-            switch (c) {
-                case '\r':
-                case '\n':
-                case '\t':
-                case ' ':
-                    ws();
-                    break;
-                case 'n':
-                    return scanNull();
-                case 'f':
-                    return scanFalse();
-                case 't':
-                    return scanTrue();
-                case '\"':
-                    return scanString();
+    /* num: int frac exp */
+    private Token scanNum() throws InvalidCharacterException {
+        assert(c == '-' || isDigit());
+        StringBuilder sb = new StringBuilder();
+        scanInt(sb);
+        scanFrac(sb);
+        scanExp(sb);
+        if(isSeparatorChar()){
+            return new Token(TokenType.NUM,sb.toString());
+        }
+        throw new InvalidCharacterException("invalid num "+ sb.toString());
+    }
 
-                default:
-                    throw new InvalidCharacterException("invalid character: " + c);
+    /* int: digit | onenine digits|  '-' digit | '-' onenine digits */
+    private void scanInt(StringBuilder sb){
+        if(c == '-'){
+            sb.append(c);
+            nextChar();
+        }
+        if(c == '0'){
+            sb.append(c);
+            nextChar();
+        }else {
+            while(isDigit()){
+                sb.append(c);
+                nextChar();
             }
         }
-        return Token.EOF;
+    }
+
+    /* frac: '' || '.' digits */
+    private void scanFrac(StringBuilder sb){
+        if(c=='.'){
+            sb.append(c);
+            nextChar();
+            while (isDigit()){
+                sb.append(c);
+                nextChar();
+            }
+        }
+    }
+
+   /*exp: "" | ("E"|'e') sign digits*/
+    private void scanExp(StringBuilder sb) throws InvalidCharacterException {
+        if(c != 'e' && c != 'E')
+            return;
+
+        sb.append(c);
+        nextChar();
+
+        if(c == '+' || c=='-'){
+            sb.append(c);
+            nextChar();
+        }
+
+        //如果 E 后没有数字的话，是非法的数字，比如 10E
+        if(!isDigit()){
+            throw new InvalidCharacterException("invalid num "+sb.toString());
+        }
+
+        while (isDigit()){
+            sb.append(c);
+            nextChar();
+        }
+    }
+
+    private boolean isSeparatorChar() {
+        return c == ' ' || c == ',' || c == '}' || c == ']' || c == '\n' || c == '\r'
+                || c == '\t' || c == EOF || c == '\f' || c == '\b';
+    }
+
+    private boolean isHex() {
+        return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
+    }
+
+    private boolean isDigit(){
+        return c== '0' || isOneNine();
+    }
+
+    private boolean isOneNine(){
+        return c>='1' && c<='9';
+    }
+
+    private void ws() {
+        while (c == ' ' || c == '\t' || c == '\r' || c == '\n')
+            nextChar();
     }
 
     private void nextChar() {
@@ -165,4 +242,5 @@ public class Lexer {
             c = EOF;
         }
     }
+
 }

@@ -3,7 +3,8 @@ package com.zhangguojian.json;
 import com.zhangguojian.json.exception.InvalidCharacterException;
 import com.zhangguojian.json.exception.JSONException;
 import com.zhangguojian.json.exception.NoViableTokenException;
-import org.junit.Assert;
+
+import com.zhangguojian.json.exception.NumberParseException;
 import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +38,15 @@ public class ParserTest {
 
         assertThat(new Parser(new Lexer("\"hello world\"")).parse())
                 .isEqualTo("hello world");
+    }
+
+    @Test
+    public void parseDouble() throws JSONException {
+        assertThat(new Parser(new Lexer("3.14159E10")).parse())
+                .isEqualTo(3.14159E10);
+
+        assertThatThrownBy(() -> new Parser(new Lexer("3E308")).parse())
+                .isInstanceOf(NumberParseException.class);
     }
 
 }

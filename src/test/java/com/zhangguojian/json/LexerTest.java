@@ -85,6 +85,7 @@ public class LexerTest {
         assertThatThrownBy(() -> {
             new Lexer("truek").getNextToken();
         }).isInstanceOf(InvalidCharacterException.class);
+
         assertThatThrownBy(() -> {
             new Lexer("falsek").getNextToken();
         }).isInstanceOf(InvalidCharacterException.class);
@@ -115,5 +116,26 @@ public class LexerTest {
         //测试 uniode
         assertThat(new Lexer("\"\\u4f60\\u597d\\u4e16\\u754c\"").getNextToken().text)
                 .isEqualTo("你好世界");
+    }
+
+    @Test
+    public void testNum() throws InvalidCharacterException {
+        assertThat(new Lexer("12345").getNextToken().text).isEqualTo("12345");
+        assertThat(new Lexer("-12345").getNextToken().text).isEqualTo("-12345");
+        assertThat(new Lexer("-12E-10").getNextToken().text).isEqualTo("-12E-10");
+        assertThat(new Lexer("2e10").getNextToken().text).isEqualTo("2e10");
+        assertThat(new Lexer(" -90e3   ").getNextToken().text).isEqualTo("-90e3");
+
+        assertThatThrownBy(() -> new Lexer("--6").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+        assertThatThrownBy(() -> new Lexer("e3").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+        assertThatThrownBy(() -> new Lexer("-12E").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+        assertThatThrownBy(() -> new Lexer("95a54e53").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+        assertThatThrownBy(() -> new Lexer("-12E1.12").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+
     }
 }
