@@ -136,6 +136,19 @@ public class LexerTest {
                 .isInstanceOf(InvalidCharacterException.class);
         assertThatThrownBy(() -> new Lexer("-12E1.12").getNextToken())
                 .isInstanceOf(InvalidCharacterException.class);
-
     }
+
+    @Test
+    public void testArray() throws InvalidCharacterException {
+        Lexer lexer = new Lexer("[1,2]");
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.LB);
+
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COMMA);
+
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
+
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RB);
+    }
+
 }

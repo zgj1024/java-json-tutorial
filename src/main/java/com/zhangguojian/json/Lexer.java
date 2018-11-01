@@ -35,6 +35,15 @@ public class Lexer {
                     return scanString();
                 case '-':
                     return scanNum();
+                case '[':
+                    nextChar();
+                    return Token.LB;
+                case ']':
+                    nextChar();
+                    return Token.RB;
+                case ',':
+                    nextChar();
+                    return Token.COMMA;
                 default:
                     if(isDigit()){
                         return scanNum();
