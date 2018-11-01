@@ -9,13 +9,18 @@ import com.zhangguojian.json.exception.NumberParseException;
 import org.junit.Test;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ParserTest {
 
     @Test
-    public void parseNull() throws JSONException {
+    public void testParseNull() throws JSONException {
         assertThat(new Parser(new Lexer("null")).parse())
                 .isEqualTo(null);
         assertThat(new Parser(new Lexer("null\r")).parse())
@@ -23,7 +28,7 @@ public class ParserTest {
     }
 
     @Test
-    public void parseBoolean() throws JSONException {
+    public void testParseBoolean() throws JSONException {
         assertThat(new Parser(new Lexer("true")).parse())
                 .isEqualTo(Boolean.TRUE);
         assertThat(new Parser(new Lexer("false")).parse())
@@ -34,7 +39,7 @@ public class ParserTest {
     }
 
     @Test
-    public void parseString() throws JSONException {
+    public void testParseString() throws JSONException {
         assertThatThrownBy(() -> new Parser(new Lexer("\"\"\"")).parse())
                 .isInstanceOf(InvalidCharacterException.class);
 
@@ -43,7 +48,7 @@ public class ParserTest {
     }
 
     @Test
-    public void parseNum() throws JSONException {
+    public void testParseNum() throws JSONException {
         assertThat(new Parser(new Lexer("3.14159E10")).parse())
                 .isEqualTo(3.14159E10);
 
@@ -52,7 +57,7 @@ public class ParserTest {
     }
 
     @Test
-    public void parseArray() throws JSONException {
+    public void testParseArray() throws JSONException {
         //数组为空
         assertThat(new Parser(new Lexer("[]")).parse())
                 .isEqualTo(List.nil());
@@ -80,4 +85,24 @@ public class ParserTest {
                 .isInstanceOf(NoViableTokenException.class);
     }
 
+    @Test
+    public void testParseObj() throws JSONException, IOException {
+        Map<String,Object> v1 = (Map<String, Object>) new Parser(new Lexer("{\"name\":\"John Smith\",\"age\":15}")).parse();
+        assertThat(v1.get("name")).isEqualTo("John Smith");
+        assertThat(v1.get("age")).isEqualTo(15.0);
+
+        String content = new String(Files.readAllBytes(Paths.get("src/test/data/juejin-me.json")));
+
+        Map<String,Object> v2 = (Map<String, Object>) new Parser(new Lexer(content)).parse();
+        Map<String,Object> v3 = (Map<String, Object>) v2.get("d");
+        assertThat(v3.get("username")).isEqualTo("挖坑英雄小王");
+        assertThat(v3.get("jobTitle")).isEqualTo("首席挖坑员");
+
+        Map<String,Object> v4 = (Map<String, Object>) new Parser(new Lexer("{}")).parse();
+        assertThat(v4).isEmpty();
+
+        assertThatThrownBy(() -> new Parser(new Lexer("{,}")).parse())
+                .isInstanceOf(NoViableTokenException.class);
+
+    }
 }

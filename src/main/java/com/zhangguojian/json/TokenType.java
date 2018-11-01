@@ -1,5 +1,5 @@
 package com.zhangguojian.json;
 
 public enum TokenType {
-    EOF,NULL,TRUE,FALSE,NUM,STR,COMMA,LB,RB
+    EOF,NULL,TRUE,FALSE,NUM,STR,COMMA,LB,RB,LP,RP,COLON
 }

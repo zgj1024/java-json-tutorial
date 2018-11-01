@@ -40,7 +40,7 @@ public class LexerTest {
 
     @Test
     public void testEOF() throws InvalidCharacterException {
-        Lexer lexer = new Lexer("\r \t \n");
+        Lexer lexer = new Lexer("\r \t \n ");
         Assert.assertEquals(lexer.getNextToken(), Token.EOF);
     }
 
@@ -96,11 +96,28 @@ public class LexerTest {
         assertThat(new Lexer("\"\"").getNextToken().text)
                 .isEqualTo("");
 
-
         assertThat(new Lexer("\"Hello world\"").getNextToken().text).isEqualTo("Hello world");
+
+        //测试转义符
+        assertThat(new Lexer("\"\\/\\t\\n\\f\\b\\n\\r\\\\\"").getNextToken().text)
+                .isEqualTo("/\t\n\f\b\n\r\\");
+
+        //测试 uniode
+        assertThat(new Lexer("\"\\u4f60\\u597d\\u4e16\\u754c\"").getNextToken().text)
+                .isEqualTo("你好世界");
+
+        //测试 UTF-8 BOOM
+        assertThat(new Lexer("\"\\ufeffHello world\"").getNextToken().text).isEqualTo("Hello world");
 
         //字符串未完成
         assertThatThrownBy(() -> new Lexer("\"Hello world").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+
+        assertThatThrownBy(() -> new Lexer("\"").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+
+        //unicode 未完成
+        assertThatThrownBy(() -> new Lexer("\"\\u123\"").getNextToken())
                 .isInstanceOf(InvalidCharacterException.class);
 
         //不能有单独的 '\'
@@ -109,17 +126,14 @@ public class LexerTest {
         //而在字符串中不能有 '"' 在 Lexer 中很难做到。反而在 parse 中比较容易做。
         //assertThatThrownBy(() -> new Lexer("\"\"\"").getNextToken()).isInstanceOf(InvalidCharacterException.class);
 
-        //测试转义符
-        assertThat(new Lexer("\"Hello\\tworld\"").getNextToken().text)
-                .isEqualTo("Hello\tworld");
-
-        //测试 uniode
-        assertThat(new Lexer("\"\\u4f60\\u597d\\u4e16\\u754c\"").getNextToken().text)
-                .isEqualTo("你好世界");
+        //测试不存在的转义符
+        assertThatThrownBy(() -> new Lexer("\"\\k\"").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
     }
 
     @Test
     public void testNum() throws InvalidCharacterException {
+        assertThat(new Lexer("0.14159").getNextToken().text).isEqualTo("0.14159");
         assertThat(new Lexer("12345").getNextToken().text).isEqualTo("12345");
         assertThat(new Lexer("-12345").getNextToken().text).isEqualTo("-12345");
         assertThat(new Lexer("-12E-10").getNextToken().text).isEqualTo("-12E-10");
@@ -151,4 +165,19 @@ public class LexerTest {
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RB);
     }
 
+    @Test
+    public void testObject() throws InvalidCharacterException {
+        Lexer lexer = new Lexer("{\"name\":\"John Smith\",\"age\":15 }");
+
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.LP);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COLON);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COMMA);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COLON);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RP);
+
+    }
 }

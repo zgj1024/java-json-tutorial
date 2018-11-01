@@ -44,6 +44,15 @@ public class Lexer {
                 case ',':
                     nextChar();
                     return Token.COMMA;
+                case '{':
+                    nextChar();
+                    return Token.LP;
+                case ':':
+                    nextChar();
+                    return Token.COLON;
+                case '}':
+                    nextChar();
+                    return Token.RP;
                 default:
                     if(isDigit()){
                         return scanNum();
@@ -140,7 +149,7 @@ public class Lexer {
                 if (i == 4) {
                     String unicodeStr = unicode.toString();
                     if ("feff".equals(unicodeStr)) {//UTF-8 Boom
-                        break;
+                        return;
                     }
                     sb.append((char) Integer.parseInt(unicodeStr, 16));
                     return;
