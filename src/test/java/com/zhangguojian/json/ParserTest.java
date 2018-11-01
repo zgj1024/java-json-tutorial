@@ -9,7 +9,7 @@ import org.junit.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-public class ParseTest {
+public class ParserTest {
 
     @Test
     public void parseNull() throws JSONException {
@@ -25,12 +25,18 @@ public class ParseTest {
                 .isEqualTo(Boolean.TRUE);
         assertThat(new Parser(new Lexer("false")).parse())
                 .isEqualTo(Boolean.FALSE);
+
+        assertThatThrownBy(() -> new Parser(new Lexer("true true")).parse())
+                .isInstanceOf(NoViableTokenException.class);
     }
 
     @Test
-    public void parseEOF() throws JSONException {
-        assertThatThrownBy(() -> new Parser(new Lexer("")).parse())
-                .isInstanceOf(NoViableTokenException.class);
+    public void parseString() throws JSONException {
+        assertThatThrownBy(() -> new Parser(new Lexer("\"\"\"")).parse())
+                .isInstanceOf(InvalidCharacterException.class);
+
+        assertThat(new Parser(new Lexer("\"hello world\"")).parse())
+                .isEqualTo("hello world");
     }
 
 }
