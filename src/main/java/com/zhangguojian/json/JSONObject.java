@@ -11,7 +11,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
                 }
                 final Object value = e.getValue();
                 if (value != null) {
-                    jsonObject.put(String.valueOf(e.getKey()), wrap(value));
+                    jsonObject.put(String.valueOf(e.getKey()), JSON.wrap(value));
                 }
             }
             return jsonObject;
@@ -45,7 +44,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
     public static JSONObject<String,Object> fromObject(Object bean) throws JSONException {
         Class<?> cls = bean.getClass();
 
-        JSONObject<String,Object> jsonObject = new JSONObject();
+        JSONObject<String,Object> jsonObject = new JSONObject<>();
 
 
         boolean includeSuperClass = cls.getClassLoader() != null;
@@ -65,7 +64,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
                     try {
                         final Object result = method.invoke(bean);
                         if (result != null) {
-                            jsonObject.put(key, wrap(result));
+                            jsonObject.put(key, JSON.wrap(result));
                             // we don't use the result anywhere outside asList wrap
                             // if it's a resource we should be sure to close it
                             // after calling toString
@@ -113,37 +112,6 @@ public class JSONObject<K, V> extends HashMap<K, V> {
         return key;
     }
 
-    public static Object wrap(Object object) {
-        try {
-
-            if (object instanceof JSONObject || object instanceof JSONArray
-
-                    || object instanceof Byte || object instanceof Character
-                    || object instanceof Short || object instanceof Integer
-                    || object instanceof Long || object instanceof Boolean
-                    || object instanceof Float || object instanceof Double
-                    || object instanceof String || object instanceof BigInteger
-                    || object instanceof BigDecimal || object instanceof Enum) {
-                return object;
-            }
-
-            if (object instanceof Collection) {
-                Collection<?> coll = (Collection<?>) object;
-                return JSONArray.fromObject(coll);
-            }
-            if (object.getClass().isArray()) {
-                return JSONArray.fromObject(object);
-            }
-            if (object instanceof Map) {
-                Map<?, ?> map = (Map<?, ?>) object;
-                return JSONObject.fromObject(map);
-            }
-
-            return JSONObject.fromObject(object);
-        } catch (Exception exception) {
-            return null;
-        }
-    }
     public JSONObject(int size){
         super(size);
     }
@@ -223,21 +191,6 @@ public class JSONObject<K, V> extends HashMap<K, V> {
 
     @Override
     public String toString() {
-        if (isEmpty()) {
-            return "{}";
-        }
-        StringBuilder sb = new StringBuilder("{");
-
-        for (Map.Entry  entry : entrySet()) {
-            try {
-                sb.append(JSON.stringify(entry.getKey())).append(":").append(JSON.stringify(entry.getValue())).append(",");
-            } catch (JSONException e) {
-                e.printStackTrace();
-                return "";
-            }
-        }
-
-        sb.replace(sb.length() - 1, sb.length(), "}");
-        return sb.toString();
+        return JSON.stringify(this);
     }
 }

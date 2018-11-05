@@ -86,7 +86,6 @@ public class JSONTest {
         JSONArray<String> jsonArray2 = new JSONArray<>();
         jsonArray2.add("\"");
         jsonArray2.add("\t");
-
         assertThat(JSON.stringify(jsonArray2)).isEqualTo("[\"\\\"\",\"\\t\"]");
 
         Person person = new Person();
@@ -102,14 +101,15 @@ public class JSONTest {
         son.setAge(1);
 
         person.setSon(son);
-        assertThat(JSON.stringify(person)).isEqualTo("{\"son\":{\"name\":\"no one\",\"age\":1},\"isOk\":true,\"name\":\"李四\",\"array2\":[1,2,3,4],\"array1\":[1,2,3,4],\"age\":68,\"queue\":[1,2,3,4]}");
+        JSONObject result = JSON.parse(JSON.stringify(person)).objectValue().getJSONObject("son");
+        assertThat(result.getString("name")).isEqualTo("no one");
+        assertThat(result.getInt("age")).isEqualTo(1);
 
     }
 
     @Test
     public void testStringifyMap(){
         assertThat(JSON.stringify(JSONObject.EMPTY)).isEqualTo("{}");
-
 
         JSONObject<String,Object> map1 = new JSONObject<>();
         map1.put("name","张三");

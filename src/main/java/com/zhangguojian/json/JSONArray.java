@@ -48,7 +48,7 @@ public class JSONArray<E> extends ArrayList<E> {
         int length = Array.getLength(o);
         array.ensureCapacity(length);
         for (int i = 0; i < length; i += 1) {
-            array.add(JSONObject.wrap(Array.get(o, i)));
+            array.add(JSON.wrap(Array.get(o, i)));
         }
         return array;
     }
@@ -61,19 +61,6 @@ public class JSONArray<E> extends ArrayList<E> {
 
     @Override
     public String toString() {
-        if (isEmpty()) {
-            return "[]";
-        }
-        StringBuilder sb = new StringBuilder("[");
-        for (E o : this) {
-            try {
-                sb.append(JSON.stringify(o)).append(",");
-            } catch (JSONException e) {
-                e.printStackTrace();
-                return "";
-            }
-        }
-        sb.replace(sb.length() - 1, sb.length(), "]");
-        return sb.toString();
+        return JSON.stringify(this);
     }
 }
