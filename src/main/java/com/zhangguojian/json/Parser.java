@@ -3,32 +3,55 @@ package com.zhangguojian.json;
 import com.zhangguojian.json.exception.InvalidCharacterException;
 import com.zhangguojian.json.exception.JSONException;
 import com.zhangguojian.json.exception.NoViableTokenException;
-import com.zhangguojian.json.exception.NumberParseException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.List;
-import java.util.Map;
 
 import static com.zhangguojian.json.TokenType.*;
+
 public class Parser {
 
     private Lexer input;
     private Token forward;
-    private final static ArrayList<Object> EMPTY_ARRAY = new ArrayList<>();
-    private final static Map<String,Object> EMPTY_OBJ = new HashMap<>();
-    public Parser(Lexer input) throws InvalidCharacterException {
-        this.input = input;
-        this.forward = input.getNextToken();
+
+    public Parser(String input) throws InvalidCharacterException {
+        this.input = new Lexer(input);
+        this.forward = this.input.getNextToken();
     }
 
-    Object parse() throws JSONException {
+    JSONValue parse() throws JSONException {
         Object value = value();
         match(EOF);
-        return value;
+        return JSONValue.of(value);
     }
 
-    private Object value() throws JSONException {
+    private static boolean isDecimalNotation(final String val) {
+        return val.indexOf('.') > -1 || val.indexOf('e') > -1
+                || val.indexOf('E') > -1 || "-0".equals(val);
+    }
+
+    static Number parseNumber(final String val){
+        if (isDecimalNotation(val)) {
+            final Double d = Double.valueOf(val);
+            if (d.isInfinite() || d.isNaN()) {
+                return new BigDecimal(val);
+            }
+            return d;
+        }
+
+        BigInteger bigIntValue = new BigInteger(val);
+        if(bigIntValue.bitLength()<=31){
+            return bigIntValue.intValue();
+        }
+        if(bigIntValue.bitLength()<=63){
+            return bigIntValue.longValue();
+        }
+        return bigIntValue;
+
+    }
+
+    public Object value() throws JSONException {
         switch (forward.tokenType) {
             case NULL:
                 match(NULL);
@@ -44,12 +67,9 @@ public class Parser {
                 match(STR);
                 return strValue;
             case NUM:
-                Double numValue = Double.valueOf(forward.text);
-                if (Double.isInfinite(numValue)) {
-                    throw new NumberParseException("nums: " + forward.text + " is too big or too small");
-                }
+                String numText =forward.text;
                 match(NUM);
-                return numValue;
+                return parseNumber(numText);
             case LB:
                 return parseArray();
             case LP:
@@ -60,24 +80,24 @@ public class Parser {
     }
 
     /* array: '[' ']' | '[' elements '] */
-    private List<Object> parseArray() throws JSONException {
+    private JSONArray parseArray() throws JSONException {
         match(LB);
 
-        List<Object> array = new ArrayList<>();
-        if(forward.tokenType == RB){
+        if (forward.tokenType == RB) {
             match(RB);
-            return array;
-        }else {
+            return JSONArray.EMPTY;
+        } else {
+            JSONArray array = new JSONArray();
             elements(array);
             match(RB);
+            return array;
         }
-        return  array;
     }
 
     /* elements: element (',' element)* */
     private void elements(List<Object> array) throws JSONException {
         element(array);
-        while (forward.tokenType == COMMA){
+        while (forward.tokenType == COMMA) {
             match(COMMA);
             elements(array);
         }
@@ -89,13 +109,13 @@ public class Parser {
     }
 
     /* object: '{' '}' | '{' members '}' */
-    private Map<String,Object> parseObj () throws JSONException {
+    private JSONObject parseObj() throws JSONException {
         match(LP);
-        if(forward.tokenType == RP){
+        if (forward.tokenType == RP) {
             match(RP);
-            return EMPTY_OBJ;
-        }else {
-            Map<String,Object> objMap=new HashMap<>();
+            return JSONObject.EMPTY;
+        } else {
+            JSONObject objMap = new JSONObject();
             members(objMap);
             match(RP);
             return objMap;
@@ -103,27 +123,27 @@ public class Parser {
     }
 
     /* members : member , members */
-    private void members(Map<String,Object> objMap) throws JSONException {
+    private void members(JSONObject objMap) throws JSONException {
         member(objMap);
-        while (forward.tokenType == COMMA){
+        while (forward.tokenType == COMMA) {
             match(COMMA);
             members(objMap);
         }
     }
 
     /* member: string ':' element */
-    private void member(Map<String,Object> map) throws JSONException {
+    private void member(JSONObject map) throws JSONException {
         String key = forward.text;
         match(STR);
         match(COLON);
-        map.put(key,value());
+        map.put(key, value());
     }
 
     private void match(TokenType tokenType) throws JSONException {
-        if(forward.tokenType == tokenType){
+        if (forward.tokenType == tokenType) {
             this.forward = input.getNextToken();
-        }else {
-            throw new NoViableTokenException("expected token is "+ tokenType
+        } else {
+            throw new NoViableTokenException("expected token is " + tokenType
                     + " but actual is " + forward.tokenType);
         }
     }

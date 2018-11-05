@@ -2,6 +2,12 @@
   "s": 1,
   "m": "ok",
   "d": {
+    "tags_id": [132, 133,134,135],
+    "float":3.14E10,
+    "big_float":3.14E310,
+    "int":314,
+    "big_int":3140000000000000000,
+    "very_big_int":314000000000000000000000000000000000,
     "role": "guest",
     "username": "\u6316\u5751\u82f1\u96c4\u5c0f\u738b",
     "selfDescription": "\u64c5\u957f\u6316\u5751\u3001\u586b\u81ea\u5df1\u8fdb\u53bb",
