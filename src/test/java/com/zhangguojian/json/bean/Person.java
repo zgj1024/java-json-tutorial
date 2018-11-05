@@ -1,9 +1,11 @@
-package com.zhangguojian.json;
+package com.zhangguojian.json.bean;
+
+import com.zhangguojian.json.JSONIgnore;
 
 import java.util.List;
 import java.util.Queue;
 
-public class Person {
+public class Person extends Human{
 
     private String name;
 
@@ -18,6 +20,8 @@ public class Person {
     private Queue queue;
 
     private Person son;
+
+    private String canNotStringify = "canNotStringify";
 
     public String getName() {
         return name;
@@ -75,5 +79,14 @@ public class Person {
 
     public void setOk(Boolean ok) {
         this.ok = ok;
+    }
+
+    @JSONIgnore
+    public String getCanNotStringify() {
+        return canNotStringify;
+    }
+
+    public void setCanNotStringify(String canNotStringify) {
+        this.canNotStringify = canNotStringify;
     }
 }

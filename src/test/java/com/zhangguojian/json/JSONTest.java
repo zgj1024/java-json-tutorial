@@ -1,11 +1,10 @@
 package com.zhangguojian.json;
 
 
-import java.lang.reflect.InvocationTargetException;
-import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
+import com.zhangguojian.json.bean.Person;
 import com.zhangguojian.json.exception.CastException;
 import com.zhangguojian.json.exception.JSONException;
 import org.junit.Test;
@@ -124,6 +123,25 @@ public class JSONTest {
         map2.put("age",26);
         assertThat(JSON.stringify(map1)).isEqualTo("{\"name\":\"张三\",\"age\":26}");
 
+    }
+
+    @Test
+    public void testJSONIgnore() throws JSONException {
+        Person king = new Person();
+        king.setName("king");
+        king.setAge(70);
+
+        assertThat(king.getCanNotStringify()).isEqualTo("canNotStringify");
+        assertThat(king.getDeathAge()).isEqualTo(100);
+        assertThat(king.getNumberOfEye()).isEqualTo(2);
+
+
+        JSONObject result = JSON.parse(JSON.stringify(king)).objectValue();
+        assertThat(result.get("canNotStringify")).isEqualTo(null);
+        assertThat(result.get("deathAge")).isEqualTo(null);
+        assertThat(result.get("numberOfEye")).isEqualTo(null);
+        assertThat(result.get("numberOfEar")).isEqualTo(2);
+        
     }
 
 }

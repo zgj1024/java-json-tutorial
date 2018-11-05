@@ -2,6 +2,7 @@ package com.zhangguojian.json;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -31,6 +32,7 @@ public class ReflectUtils {
                     && method.getParameterTypes().length == 0
                     && !method.isBridge()
                     && method.getReturnType() != Void.TYPE
+                    && !isMethodsHasJSONIgnore(method)
                     && isValidMethodName(method.getName())) {
                 methodList.add(method);
             }
@@ -41,6 +43,28 @@ public class ReflectUtils {
     private static boolean isValidMethodName(String name) {
         return !"getClass".equals(name) && !"getDeclaringClass".equals(name);
     }
+
+    private static boolean isMethodsHasJSONIgnore(Method method) {
+        if(method.getAnnotation(JSONIgnore.class)!=null){
+            return true;
+        }
+
+        Class<?> c = method.getDeclaringClass();
+
+        //可能是属性的父类实现了 某个接口
+        for (Class<?> i : c.getInterfaces()) {
+            try {
+                Method im = i.getMethod(method.getName(), method.getParameterTypes());
+                return isMethodsHasJSONIgnore(im);
+            } catch (final SecurityException ex) {
+                continue;
+            } catch (final NoSuchMethodException ex) {
+                continue;
+            }
+        }
+        return false;
+    }
+
 
 
     /**

@@ -1,5 +1,6 @@
 package com.zhangguojian.json;
 
+import com.zhangguojian.json.bean.Person;
 import com.zhangguojian.json.exception.CastException;
 import com.zhangguojian.json.exception.JSONException;
 import com.zhangguojian.json.exception.NullException;
