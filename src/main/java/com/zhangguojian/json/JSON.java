@@ -34,6 +34,7 @@ public class JSON {
         return stringify(JSONObject.fromObject(o));
     }
 
+
     public static String stringify(String str){
         if(str==null){return null;}
         StringBuilder sb = new StringBuilder("\"");
@@ -56,9 +57,20 @@ public class JSON {
                     sb.append("\\\\");break;
                 case '/':
                     sb.append("\\/");break;
-                default:
-                    sb.append(character);
+                case '\ufeff':
                     break;
+                default:
+                    if ((character >= '\u0080' && character < '\u00a0')
+                            || (character >= '\u2000' && character < '\u2100')){
+                        String h = Integer.toHexString(character);
+                        sb.append("\\u");
+                        for(int j = 0 ; j < 4-h.length();j++){
+                            sb.append("0");
+                        }
+                        sb.append(h);
+                    }else {
+                        sb.append(character);
+                    }
             }
         }
         sb.append("\"");

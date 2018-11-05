@@ -20,36 +20,18 @@ public class JSONObject<K, V> extends HashMap<K, V> {
 
     public static final JSONObject<String,Object> EMPTY = new JSONObject<>();
 
-    private static final class Null {
-        @Override
-        public boolean equals(Object object) {
-            return object == null || object == this;
-        }
-
-        @Override
-        public int hashCode() {
-            return 0;
-        }
-
-        @Override
-        public String toString() {
-            return "null";
-        }
-    }
-    public static final Object NULL = new Null();
-
     public static JSONObject fromObject(String input) throws JSONException {
         return new Parser(input).parse().objectValue();
     }
 
-    public static JSONObject fromObject(Map<?,?> map) throws JSONException {
+    public static <K,V> JSONObject<String,Object> fromObject(Map<K,V> map) throws JSONException {
         if (map == null) {
-           return EMPTY;
+           return new JSONObject<>();
         } else {
-            JSONObject jsonObject = new JSONObject(map.size());
-            for (final Entry<?, ?> e : map.entrySet()) {
+            JSONObject<String,Object> jsonObject = new JSONObject<>(map.size());
+            for (final Entry<K, V> e : map.entrySet()) {
                 if(e.getKey() == null) {
-                    throw new NullPointerException("Null key.");
+                    throw new NullException("Null key.");
                 }
                 final Object value = e.getValue();
                 if (value != null) {
@@ -60,13 +42,15 @@ public class JSONObject<K, V> extends HashMap<K, V> {
         }
     }
 
-    public static JSONObject fromObject(Object bean) throws JSONException {
-        Class<?> klass = bean.getClass();
+    public static JSONObject<String,Object> fromObject(Object bean) throws JSONException {
+        Class<?> cls = bean.getClass();
 
-        JSONObject jsonObject = new JSONObject();
-        boolean includeSuperClass = klass.getClassLoader() != null;
+        JSONObject<String,Object> jsonObject = new JSONObject();
 
-        Method[] methods = includeSuperClass ? klass.getMethods() : klass.getDeclaredMethods();
+
+        boolean includeSuperClass = cls.getClassLoader() != null;
+        //如果不是 Integer 之类的原生类型，拿父类及自己所有的函数
+        Method[] methods = includeSuperClass ? cls.getMethods() : cls.getDeclaredMethods();
         for (final Method method : methods) {
             final int modifiers = method.getModifiers();
             if (Modifier.isPublic(modifiers)
@@ -75,13 +59,14 @@ public class JSONObject<K, V> extends HashMap<K, V> {
                     && !method.isBridge()
                     && method.getReturnType() != Void.TYPE
                     && isValidMethodName(method.getName())) {
+                //用方法名做为 key，比如 getName 会返回 name
                 final String key = getKeyNameFromMethod(method);
                 if (key != null && !key.isEmpty()) {
                     try {
                         final Object result = method.invoke(bean);
                         if (result != null) {
                             jsonObject.put(key, wrap(result));
-                            // we don't use the result anywhere outside of wrap
+                            // we don't use the result anywhere outside asList wrap
                             // if it's a resource we should be sure to close it
                             // after calling toString
                             if (result instanceof Closeable) {
@@ -116,9 +101,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
         } else {
             return null;
         }
-        // if the first letter in the key is not uppercase, then skip.
-        // This is to maintain backwards compatibility before PR406
-        // (https://github.com/stleary/JSON-java/pull/406/)
+
         if (Character.isLowerCase(key.charAt(0))) {
             return null;
         }
@@ -132,11 +115,9 @@ public class JSONObject<K, V> extends HashMap<K, V> {
 
     public static Object wrap(Object object) {
         try {
-            if (object == null) {
-                return NULL;
-            }
+
             if (object instanceof JSONObject || object instanceof JSONArray
-                    || NULL.equals(object)
+
                     || object instanceof Byte || object instanceof Character
                     || object instanceof Short || object instanceof Integer
                     || object instanceof Long || object instanceof Boolean
@@ -169,10 +150,6 @@ public class JSONObject<K, V> extends HashMap<K, V> {
 
     public JSONObject(){
         super();
-    }
-
-    public JSONObject(Map<? extends K, ? extends V> m) {
-        super(m);
     }
 
 
