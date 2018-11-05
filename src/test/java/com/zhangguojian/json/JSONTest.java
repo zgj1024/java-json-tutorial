@@ -91,7 +91,7 @@ public class JSONTest {
         Person person = new Person();
         person.setName("李四");
         person.setAge(68);
-        person.setIsOk(true);
+        person.setOk(true);
         person.setArray1(Arrays.asList(1,2,3,4));
         person.setArray2(array2);
         person.setQueue(q);
@@ -101,9 +101,12 @@ public class JSONTest {
         son.setAge(1);
 
         person.setSon(son);
-        JSONObject result = JSON.parse(JSON.stringify(person)).objectValue().getJSONObject("son");
-        assertThat(result.getString("name")).isEqualTo("no one");
-        assertThat(result.getInt("age")).isEqualTo(1);
+        JSONObject result = JSON.parse(JSON.stringify(person)).objectValue();
+        JSONObject sonResult =result.getJSONObject("son");
+
+        assertThat(result.getBoolean("ok")).isEqualTo(true);
+        assertThat(sonResult.getString("name")).isEqualTo("no one");
+        assertThat(sonResult.getInt("age")).isEqualTo(1);
 
     }
 

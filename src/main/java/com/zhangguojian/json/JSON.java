@@ -3,9 +3,12 @@ package com.zhangguojian.json;
 import com.zhangguojian.json.exception.JSONException;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 
 public class JSON {
@@ -29,12 +32,28 @@ public class JSON {
         } else if (o instanceof Map) {
             Map<?, ?> map = (Map<?, ?>) o;
             return stringify(map);
-        }
-        try {
-            return JSONObject.fromObject(o).toString();
-        }catch (Exception e){
-            e.getMessage();
-            return "";
+        }else {
+            //普通的 Object 对象
+            try {
+                StringBuilder sb = new StringBuilder("{");
+                List<Method> methodList = ReflectUtils.getMethodsForCovertMap(o);
+                for (Method method : methodList) {
+                    //TODO 时间对象
+                    //TODO JSONIgnore
+                    final String key = ReflectUtils.getKeyNameFromMethod(method);
+                    if (key != null && !key.isEmpty()) {
+                        final Object result = method.invoke(o);
+                        if(result != null) {
+                            sb.append(stringify(key)).append(":").append(stringify(result)).append(",");
+                        }
+                    }
+
+                }
+                return sb.replace(sb.length() - 1, sb.length(), "}").toString();
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                e.printStackTrace();
+                return "";
+            }
         }
     }
 

@@ -7,7 +7,7 @@ public class Person {
 
     private String name;
 
-    private Boolean isOk;
+    private Boolean ok;
 
     private int age;
 
@@ -25,14 +25,6 @@ public class Person {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public Boolean getIsOk() {
-        return isOk;
-    }
-
-    public void setIsOk(Boolean ok) {
-        isOk = ok;
     }
 
     public int getAge() {
@@ -74,5 +66,14 @@ public class Person {
 
     public void setSon(Person son) {
         this.son = son;
+    }
+
+
+    public Boolean isOk() {
+        return ok;
+    }
+
+    public void setOk(Boolean ok) {
+        this.ok = ok;
     }
 }

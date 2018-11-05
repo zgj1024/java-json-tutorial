@@ -12,24 +12,25 @@ import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
 public class JSONObject<K, V> extends HashMap<K, V> {
 
-    public static final JSONObject<String,Object> EMPTY = new JSONObject<>();
+    public static final JSONObject<String, Object> EMPTY = new JSONObject<>();
 
     public static JSONObject fromObject(String input) throws JSONException {
         return new Parser(input).parse().objectValue();
     }
 
-    public static <K,V> JSONObject<String,Object> fromObject(Map<K,V> map) throws JSONException {
+    public static <K, V> JSONObject<String, Object> fromObject(Map<K, V> map) throws JSONException {
         if (map == null) {
-           return new JSONObject<>();
+            return new JSONObject<>();
         } else {
-            JSONObject<String,Object> jsonObject = new JSONObject<>(map.size());
+            JSONObject<String, Object> jsonObject = new JSONObject<>(map.size());
             for (final Entry<K, V> e : map.entrySet()) {
-                if(e.getKey() == null) {
+                if (e.getKey() == null) {
                     throw new NullException("Null key.");
                 }
                 final Object value = e.getValue();
@@ -41,44 +42,31 @@ public class JSONObject<K, V> extends HashMap<K, V> {
         }
     }
 
-    public static JSONObject<String,Object> fromObject(Object bean) throws JSONException {
-        Class<?> cls = bean.getClass();
+    public static JSONObject<String, Object> fromObject(Object bean) throws JSONException {
+        JSONObject<String, Object> jsonObject = new JSONObject<>();
 
-        JSONObject<String,Object> jsonObject = new JSONObject<>();
-
-
-        boolean includeSuperClass = cls.getClassLoader() != null;
-        //如果不是 Integer 之类的原生类型，拿父类及自己所有的函数
-        Method[] methods = includeSuperClass ? cls.getMethods() : cls.getDeclaredMethods();
-        for (final Method method : methods) {
-            final int modifiers = method.getModifiers();
-            if (Modifier.isPublic(modifiers)
-                    && !Modifier.isStatic(modifiers)
-                    && method.getParameterTypes().length == 0
-                    && !method.isBridge()
-                    && method.getReturnType() != Void.TYPE
-                    && isValidMethodName(method.getName())) {
-                //用方法名做为 key，比如 getName 会返回 name
-                final String key = getKeyNameFromMethod(method);
-                if (key != null && !key.isEmpty()) {
-                    try {
-                        final Object result = method.invoke(bean);
-                        if (result != null) {
-                            jsonObject.put(key, JSON.wrap(result));
-                            // we don't use the result anywhere outside asList wrap
-                            // if it's a resource we should be sure to close it
-                            // after calling toString
-                            if (result instanceof Closeable) {
-                                try {
-                                    ((Closeable) result).close();
-                                } catch (IOException ignore) {
-                                }
+        List<Method> methodList = ReflectUtils.getMethodsForCovertMap(bean);
+        for (Method method : methodList) {
+            final String key = ReflectUtils.getKeyNameFromMethod(method);
+            if (key != null && !key.isEmpty()) {
+                try {
+                    final Object result = method.invoke(bean);
+                    if (result != null) {
+                        jsonObject.put(key, JSON.wrap(result));
+                        // we don't use the result anywhere outside asList wrap
+                        // if it's a resource we should be sure to close it
+                        // after calling toString
+                        if (result instanceof Closeable) {
+                            try {
+                                ((Closeable) result).close();
+                            } catch (IOException e) {
+                                e.printStackTrace();
                             }
                         }
-                    } catch (IllegalAccessException ignore) {
-                    } catch (IllegalArgumentException ignore) {
-                    } catch (InvocationTargetException ignore) {
                     }
+
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    e.printStackTrace();
                 }
             }
         }
@@ -86,39 +74,16 @@ public class JSONObject<K, V> extends HashMap<K, V> {
     }
 
 
-    private static boolean isValidMethodName(String name) {
-        return !"getClass".equals(name) && !"getDeclaringClass".equals(name);
-    }
 
-    private static String getKeyNameFromMethod(Method method) {
-        String key;
-        final String name = method.getName();
-        if (name.startsWith("get") && name.length() > 3) {
-            key = name.substring(3);
-        } else if (name.startsWith("is") && name.length() > 2) {
-            key = name.substring(2);
-        } else {
-            return null;
+
+
+    public JSONObject( int size){
+            super(size);
         }
 
-        if (Character.isLowerCase(key.charAt(0))) {
-            return null;
+    public JSONObject() {
+            super();
         }
-        if (key.length() == 1) {
-            key = key.toLowerCase(Locale.ROOT);
-        } else if (!Character.isUpperCase(key.charAt(1))) {
-            key = key.substring(0, 1).toLowerCase(Locale.ROOT) + key.substring(1);
-        }
-        return key;
-    }
-
-    public JSONObject(int size){
-        super(size);
-    }
-
-    public JSONObject(){
-        super();
-    }
 
 
     private <T> T castBase(String key, Class<T> classz) throws NullException, CastException {
@@ -167,7 +132,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
 
     public BigInteger getBigInt(String key) throws NullException, CastException {
         Object o = get(key);
-        if(o instanceof BigInteger){
+        if (o instanceof BigInteger) {
             return (BigInteger) o;
         }
         return BigInteger.valueOf(castBase(key, Long.class));
@@ -175,7 +140,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
 
     public BigDecimal getBigDecimal(String key) throws NullException, CastException {
         Object o = get(key);
-        if(o instanceof  BigDecimal){
+        if (o instanceof BigDecimal) {
             return (BigDecimal) o;
         }
         return new BigDecimal(castBase(key, Double.class));
