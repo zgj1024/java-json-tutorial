@@ -1,131 +1,175 @@
-# 使用方式
+[JSON （JavaScript Object Notation）](https://zh.wikipedia.org/wiki/JSON)，是一种容易阅读的纯文本格式，常作为客户端与服务器间的中间语言进行通讯交流。前端的朋友，对`JSON.parse`和`JSON.stringify`这两个函数最熟悉不过了。如果要你去实现这两个函或这样做呢？而这篇的目的之一就是希望让大家大致了解这过程。另外一个目的是让大家了解一些编译原理的知识，以及尝试让大家体会 TDD（Test Driven Design）的好与不足，后面的教程还会涉及java 的反射及泛型的内容。。。
 
-## JSON TO Object
+# 设计简单的 api
 
-### 泛型
+先不考虑泛型，我们先设计下简单的 api 吧。api 也很简单，就设计成这样。
 
 ```java
-LinkedList<Integer> intList =  JSON.parse("[1,2,3,4]",new TypeReference<LinkedList<Integer>>(){});
+public class JSON {
+    public static Object parse(String input){
+        //TODO
+        return null;
+    }
 
-/*如果是 interface 非实现类，要先指明类型，要不然会返回 JSONArray*/
-JSONContext context = new JSONContext();
-jsonContext.addImpl(List.class,ArrayList.class);
-//这样的话，会返回 ArrayList
-List<Integer> intList =  JSON.parse("[1,2,3,4]",new TypeReference<List<Integer>>(){},context);
+    public static String stringify(Object obj){
+        //TODO
+        return "";
+    }
+}
 ```
 
-### 非泛型
-
+最终结果的测试用例大概是这样的。JSONObject 就是一个 HashMap，用于表示 JSON 中的对象。而 JSONArray 是一个 ArrayList，用于表示 JSON 中的数组。
 
 ```java
-Person person =  JSON.parse("{\"name\":\"张三\"}",Person.class);
+public class JSONTest {
+    @Test
+	public void testParse() throws IOException {
+        //读取JSON文件
+        StringBuilder sb = new StringBuilder();
+        Files.lines(Paths.get("src/test/data/juejin-me.json"), StandardCharsets.UTF_8).forEach(sb::append);
+        String jsonStr = sb.toString();
 
-//如果不指明对象的话，返回的会是 JSONValue,
-//boolean 类型
-Boolean bool =  JSON.parse("true").boolValue();
-
-//数字类型，因为不知道你要的是那种数字类型，所以返回的是 Number 的抽象类
-//可以通过 numberValue().doubleValue() 等方式获取
-//过大的数字会自己转成 BigInt 或者是 BigDecimal
-int num =  JSON.parse("1234").numberValue().intValue();
-
-//String 类型
-String str = JSON.parse("\"Hello\"").strValue()
-
-//数组类型 JSONArray（继承 ArrayList），没多余的成员变量，只增加了几个方法。
-JSONArray array = JSON.parse("[1,2,3,4]").arrayValue();
-
-//对象用的 JSONObject(继承 HashMap)
- JSONObject jsonObject = JSON.parse("{\"name\":\"张三\"}").objectValue();
+		JSONObject obj = JSON.parse(jsonStr);
+        JSONObject d = (JSONObject) jsonMap.get("d");
+        Assert.assertEquals(d.get("username"), "挖坑英雄小王");
+	}
+}
 ```
 
-## 对象转成 JSON 字符串
-```java
-Person person = new Person();
-person.setName("张三");
 
-//这样就可以了
-JSON.stringify(person);
+# 执行流程
+
+执行的流程和一般的解释器的前端是相同的。你可以看我这篇文章[简单的四则运算（二）迷你解释器](https://juejin.im/post/5bd7a5a351882520916fa674)了解一下
+
+流程图可以看龙书的配图（忽略符号表吧，这里不需要符号表）
+
+![](https://www.tuchuang001.com/images/2018/10/14/QQ20181014-094101.png)
+
+大致流程也说明一下。 
+
+- Lexer（词法分析）：将源码（JSON）的每个字符，分割成一个一个记号（Token），比如，`{"name": "张三"}`，会分割成：`{`、`name`、`:`、`张三`、`}` 这些 Token。
+
+- Parse（语法分析）：通过 Lexer 的 `getNextToken()` 函数获取 Token，然后会进行语法的校验，并且直接转成 java 的内部表示。比如 `{"name": "张三"}` 就会转成 java 中的 Map（JSONObject） 。
+
+
+# 数据结构
+所以，通过上面的描述，易知描述的数据结构。
+
+
+## TokenType.java（描述记号的类型）
+
+```java
+public enum TokenType {
+    EOF,NULL,TRUE,FALSE,NUM,STR,COMMA,LP,RP,COLON;//当然还有更多的
+}
 ```
 
-## 一些注解
+当然还有更多的
 
-### JSONIgnore
-有些属性不想转成 JSON 字符串在，get函数上添加 @JSONIgnore 注解即可。
-比如是这样
+- COMMA 表示 ',' 
+- LP表示 {
+- COLON :
+- ...
+
+
+
+## Token.java（最小的词法单元、记号）
+
 ```java
-public class Person {
+public class Token {
+    public TokenType tokenType;
+    public String text;
 
-    private String name ;
-    private int age;
+    public Token(TokenType tokenType, String text) {
+        this.tokenType = tokenType;
+        this.text = text;
+    }
+}
+```
+
+比如 `{"name": "张三"}` 分割的 Token 会是 `'{'-LP`、`'name'-STR`、`:-COLON`、`张三-STR`、`'}-RP'` 这几个Token。
+
+## Lexer.java（词法分析）
+
+将输入的字符串转成一个个Token。并有一个`getNextToken`的方法，提供给 Parser 进行 Parse(语法分析)。
+
+所以定义是简单的
+```java
+public class Lexer {
+
+    String input;
     
-    // 很多 get set
-    @JSONIgnore
-    public int getAge(){
-		return this.age ;
+    public Lexer(String input){
+        this.input = input;        
+    }
+    
+    public Token getNextToken(){
+        //TODO
     }
 }
 ```
 
-这样的话，age 字段是不会被转成 JSON 字符串的。
+又因为 `Lexer` 的另一个职责是将字符串转成一个个的 Token，所以肯定需要遍历一个字符串。当然你可以一个 for 循环，将 Token 保存在一个数组中，然后每次 `getNextToken` 只是改变数组的索引。但这样弄的话，还没解释完成就会占用过多了内存了。每次要用 `getNextToken` 才开始分析，那就挺好的。
 
-同样的，如果 JSON 字符串转成的对象的某些字段不希望被赋值，也可以这样做
+所以还需要一个很容易想到，添加一个索引 p，和 char 变量指向输入字符串的位置和对应的字符。
 
-### JSONSerialize
-
-有一些需求是，对象中的字段类型要和 JSON 中的不一样。例如：时间。
-
-对象中有时间对象的时候特别麻烦，很多时候你会想将 Timestamp 变成 long 类型、
-DataTime 作为字符串进行传输的，而不是将对象变成 `{"year":2018,month:12...}` 这种东西
-
-而在这个框架中，你只需将在 get 方法中给字段注解就可以了。
+这里还有一个辅助函数 `nextChar`，让索引 p 向前走一步，char c 指向下一个字符。p 到达字符串的末尾的时候就返回 EOF(end of file)
 
 ```java
-@JSONSerialize(using = TimestampSerializer.class)
-public Timestamp getBirthDate() {
-    return birthDate;
-}
-```
+public class Lexer {
 
-而 TimestampSerializer 这个类是必须要实现我预留的接口才可以的。
-```java
-public class TimestampSerializer implements CustomSerializer<Timestamp,Long> {
+    private String input;
 
-    @Override
-    public Long serializeValue(Timestamp input) {
-        return input.getTime();
+	private int p = -1;
+    private char c;
+    
+    private char EOF = (char) -1;
+
+    public Lexer(String input){
+        this.input = input;        
+        nextChar();
+    }
+    
+    public Token getNextToken(){
+        //TODO
+    }
+
+    //下一个字符
+    private void nextChar(){
+        p++;
+        if ( p < input.length()){
+            c = input.charAt(p);
+        }else {
+            c= EOF;
+        }
     }
 }
 ```
 
-测试用例是这样的
-```java
-@Test
-public void testSerializer(){
- 	Hero hero = new Hero();
-    hero.setName("金庸");
-    hero.setBirthDate(Timestamp.valueOf("1924-03-10 00:00:00"));
-    hero.setDeathDate(Date.valueOf("2018-10-30"));
+## parse.java（语法分析）
+语法分析，模板大概就是这样的。从 Lexer 中不断地获取 Token。现在的情况不大复杂，之后还有用 match 函数去简化，在之后的文章中还会继续探索。
 
-   	Assert.assertEquals("{\"name\":\"金庸\",\"birthDate\":-1445760000000,\"deathDate\":\"2018-10-30 00:00:00\"}",JSON.stringify(hero));
+```java
+public class Parser {
+
+    private Lexer input;
+
+    public Parser(Lexer input) {
+        this.input = input;
+    }
+
+    Object parse() throws JSONException {
+        Token token = input.getNextToken();
+        switch (token.tokenType){
+            case NULL:
+                return null;
+            case TRUE:
+                return Boolean.TRUE;
+            case FALSE:
+                return Boolean.FALSE;
+            default:
+                throw new NoViableTokenException("Unexpected token is " + token.tokenType);
+        }
+    }
 }
 ```
-
-### JSONDeserialize
-
-JSONDeserialize 和上面的需求是类似，只是 Deserialize 用与讲 JSON 字符串转成对象。 
-用例如下
-```java
-String jinyongJSON = "{\"name\":\"金庸\",\"birthDate\":-1445760000000,\"deathDate\":\"2018-10-30 00:00:00\"}";
-
-Hero hero = JSON.parse(jinyongJSON,Hero.class);
-Assert.assertEquals("金庸",hero.getName());
-Assert.assertEquals(Date.valueOf("2018-10-30"),hero.getDeathDate());
-Assert.assertEquals(new Timestamp(-1445760000000L),hero.getBirthDate());
-```
-
-
-
-
-# TOOD 
-- [ ] 支持 Reader 构造 Parser
