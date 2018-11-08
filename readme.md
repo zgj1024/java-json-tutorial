@@ -40,7 +40,7 @@ JSONArray array = JSON.parse("[1,2,3,4]").arrayValue();
 ```
 
 ## 对象转成 JSON 字符串
-```
+```java
 Person person = new Person();
 person.setName("张三");
 
@@ -100,15 +100,15 @@ public class TimestampSerializer implements CustomSerializer<Timestamp,Long> {
 
 测试用例是这样的
 ```java
-   @Test
-    public void testSerializer(){
-        Hero hero = new Hero();
-        hero.setName("金庸");
-        hero.setBirthDate(Timestamp.valueOf("1924-03-10 00:00:00"));
-        hero.setDeathDate(Date.valueOf("2018-10-30"));
+@Test
+public void testSerializer(){
+ 	Hero hero = new Hero();
+    hero.setName("金庸");
+    hero.setBirthDate(Timestamp.valueOf("1924-03-10 00:00:00"));
+    hero.setDeathDate(Date.valueOf("2018-10-30"));
 
-        Assert.assertEquals("{\"name\":\"金庸\",\"birthDate\":-1445760000000,\"deathDate\":\"2018-10-30 00:00:00\"}",JSON.stringify(hero));
-    }
+   	Assert.assertEquals("{\"name\":\"金庸\",\"birthDate\":-1445760000000,\"deathDate\":\"2018-10-30 00:00:00\"}",JSON.stringify(hero));
+}
 ```
 
 ### JSONDeserialize
@@ -118,10 +118,10 @@ JSONDeserialize 和上面的需求是类似，只是 Deserialize 用与讲 JSON 
 ```java
 String jinyongJSON = "{\"name\":\"金庸\",\"birthDate\":-1445760000000,\"deathDate\":\"2018-10-30 00:00:00\"}";
 
-        Hero hero = JSON.parse(jinyongJSON,Hero.class);
-        Assert.assertEquals("金庸",hero.getName());
-        Assert.assertEquals(Date.valueOf("2018-10-30"),hero.getDeathDate());
-        Assert.assertEquals(new Timestamp(-1445760000000L),hero.getBirthDate());
+Hero hero = JSON.parse(jinyongJSON,Hero.class);
+Assert.assertEquals("金庸",hero.getName());
+Assert.assertEquals(Date.valueOf("2018-10-30"),hero.getDeathDate());
+Assert.assertEquals(new Timestamp(-1445760000000L),hero.getBirthDate());
 ```
 
 
@@ -129,4 +129,4 @@ String jinyongJSON = "{\"name\":\"金庸\",\"birthDate\":-1445760000000,\"deathD
 
 # TOOD 
 
--[] 支持 Reader 构造 Parser
+- [] 支持 Reader 构造 Parser
