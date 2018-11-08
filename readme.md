@@ -1,236 +1,153 @@
-# 解析 String
+# 解析 Number
 
-Boolean 类型和 null类型不同。String 类型的 Lexer 相对来讲会难一点。这是从 JSON 的 String 的定义决定的。
-![](https://www.json.org/string.gif)
+解析数字又是一个头大的问题，有多头大。验证数字是否正确竟然会是 leetcode 第一个难题。。。
+![](https://www.tuchuang001.com/images/2018/11/01/QQ20181101-110407.png)
 
-由图可以看到 String 类型里面的字符可以是
-- 可以除`"`和`\`字符外的所有 unicode集合
-- `"`和`\`会通过转义符用 `\"`,`\\` 表示
-- tab 用 `\\t` 表示，换行用 `\\n` 表示等
-- 处理 unicode的转义。用`\\u`后面有4位的16进制数就是unicode的转义了。比如,你要`JSON.parse("\"\\u4f60\\u597d\\u4e16\\u754c\"")`结果是“你好世界”。这规则真的有点头大。
+你去看 JSON 关于数字的规则也是挺烦的。
+![](https://www.json.org/number.gif)
 
-而用 EBNF 来描述会是这样的
+用 EBNF 范式表示
 ```
-string
-    '"' characters '"'
-characters
-    ""
-    character characters
-character
-    '0020' . '10ffff' - '"' - '\'
-    '\' escape
-escape
-    '"'
-    '\'
-    '/'
-    'b'
-    'n'
-    'r'
-    't'
-    'u' hex hex hex hex
+number
+    int frac exp
 
-hex
+int
     digit
-    'A' . 'F'
-    'a' . 'f'
+    onenine digits
+    '-' digit
+    '-' onenine digits
+
+digits
+    digit
+    digit digits
+
+digit
+    '0'
+    onenine
+
+onenine
+    '1' . '9'
+
+frac
+    ""
+    '.' digits
+
+exp
+    ""
+    'E' sign digits
+    'e' sign digits
+
+sign
+    ""
+    '+'
+    '-'
 ```
 
-# Lexer
+有规则按照思路去写就会比较简单。解析数字的难点也在于 Lexer 。如果是自己想学习就尝试根据规则去写 Lexer。而不是直接抄代码。这才能检验自己是否学会了。
 
-按测试驱动开发的那些概念，他们会告诉你要先测试再写实现。目的主要是在编码之前，用测试用例先让自己了解这个项目，想清楚如何设计，反正看需求看文档还要花点做笔记什么的，为何不用这些时间去写测试用例呢？觉得还是有一定的道理的。
-
-所以我会先写下测试。
+然后按照规则办事。
 
 ```java
-@Test
-public void testString() throws InvalidCharacterException {
-    assertThat(new Lexer("\"\"").getNextToken().text)
-        .isEqualTo("");
-
-    assertThat(new Lexer("\"Hello world\"").getNextToken().text)
-        .isEqualTo("Hello world");
-    //字符串未完成
-    assertThatThrownBy(() -> new Lexer("\"Hello world").getNextToken())
-        .isInstanceOf(InvalidCharacterException.class);
-
-    //不能有单独的 '\'
-    assertThatThrownBy(() -> new Lexer("\"\\\"").getNextToken())
-        .isInstanceOf(InvalidCharacterException.class);
-    //而在字符串中不能有 '"' 在 Lexer 中很难做到。反而在 parse 中比较容易做。
-    //assertThatThrownBy(() -> new Lexer("\"\"\"").getNextToken()).isInstanceO(InvalidCharacterException.class);
-
-    //测试转义符
-    assertThat(new Lexer("\"\\r\\n\\b\\f\\\\\\/Hello\\tworld\"").getNextToken().text)
-            .isEqualTo("\r\n\b\f\\/Hello\tworld");
-
-    //测试 uniode
-    assertThat(new Lexer("\"\\u4f60\\u597d\\u4e16\\u754c\"").getNextToken().text)
-            .isEqualTo("你好世界");
-
-    //错误的 unicode 只有三位 Hex 码
-    assertThatThrownBy(() -> new Lexer("\"\\u4f6\"").getNextToken())
-            .isInstanceOf(InvalidCharacterException.class);
-
-    //错误的转义
-    assertThatThrownBy(() -> new Lexer("\"\\k\"").getNextToken())
-            .isInstanceOf(InvalidCharacterException.class);
-}
-```
-
-根据定义的会写下这样的代码
-
-```java
-private Token scanString() throws InvalidCharacterException {
-	//char 中 '\"' 和 '"' 和一样的，\" 只是在字符串中才需要转义
-	//因为这个函数是内部调用的，而且只有在c == '"' 才会调用的，
-	//直接断言一下就行了，不用写过多的防御性编程。
-	assert (c == '"');
+/* num: int frac exp */
+private Token scanNum() throws InvalidCharacterException {
+	assert(c == '-' || isDigit());
 
 	StringBuilder sb = new StringBuilder();
-	sb.append(sb);
-	nextChar();
+	scanInt(sb);
+	scanFrac(sb);
+	scanExp(sb);
+	if(isSeparatorChar()){
+		return new Token(TokenType.NUM,sb.toString());
+	}
+	throw new InvalidCharacterException("invalid num "+ sb.toString());
+}
 
-	while (c != EOF) {
-		if (c =='"') {//再次遇到 '"' 才表示字符串结束
-			nextChar();
-			return new Token(TokenType.STR, sb.toString());
-		} else if (c == '\\') {
-			nextChar();
-			//处理转义
-			ESCAPE(sb);
-		} else {
+/* int: digit | onenine digits |  '-' digit | '-' onenine digits */
+private void scanInt(StringBuilder sb){
+	if(c == '-'){
+		sb.append(c);
+		nextChar();
+	}
+	if(c == '0'){
+		sb.append(c);
+		nextChar();
+	}else {
+		while(isDigit()){
 			sb.append(c);
 			nextChar();
 		}
 	}
-	throw new InvalidCharacterException("invalid token: " + sb.toString());
 }
 
-private void ESCAPE(StringBuilder sb) throws InvalidCharacterException {
-	switch (c) {
-		case '\"':
-			sb.append('\"');
-			break;
-		case 'r':
-			sb.append('\r');
-			break;
-		case 'n':
-			sb.append('\n');
-			break;
-		case 'f':
-			sb.append('\f');
-			break;
-		case 'b':
-			sb.append('\b');
-			break;
-		case 't':
-			sb.append('\t');
-			break;
-		case '/':
-			sb.append('/');
-			break;
-		case 'u':
-			//处理 unicode 转义
+/* frac: '' || '.' digits */
+private void scanFrac(StringBuilder sb){
+	if(c=='.'){
+		sb.append(c);
+		nextChar();
+		while (isDigit()){
+			sb.append(c);
 			nextChar();
-			int i = 0;
-			StringBuilder unicode = new StringBuilder("");
-			while (i < 4 && isHex()) {
-				unicode.append(c);
-				nextChar();
-				i++;
-			}
-
-	        if (i == 4) {
-				String unicodeStr = unicode.toString();
-				sb.append((char) Integer.parseInt(unicodeStr, 16));
-				return;
-			}
-			throw new InvalidCharacterException("invalid token: " + unicode.toString());
-		case '\\':
-			sb.append('\\');
-			break;
-		default:
-			throw new InvalidCharacterException("invalid token: " + sb.toString());
 		}
+	}
+}
+
+/*exp: "" | ("E"|'e') sign digits*/
+private void scanExp(StringBuilder sb) throws InvalidCharacterException {
+	if(c != 'e' && c != 'E')
+		return;
+
+	sb.append(c);
 	nextChar();
-}
 
-private boolean isHex() {
-	return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
+	if(c == '+' || c=='-'){
+		sb.append(c);
+		nextChar();
+	}
+
+	//如果 E 后没有数字的话，是非法的数字，比如 10E
+	if(!isDigit()){
+		throw new InvalidCharacterException("invalid num "+sb.toString());
+	}
+
+	while (isDigit()){
+		sb.append(c);
+		nextChar();
+	}
 }
 ```
 
-说难也不难，跟着思路走就 ok 了。
-
-
-# parser
-
-之前提到在 Lexer 字符串中，其实挺难判断 `"Hello""` 是错误的 JSON 字符串的。但是在 Parse 中就比较容易了。(只解析字符串)，字符串后面会紧接着 EOF！。所以 getNextToken 之后再判断后面的 token 就ok了。
-
-所以会写下这样的代码
-
+当然 getNextToken 会是这样的
 ```java
-Object parse() throws JSONException {
-	Token token = input.getNextToken();
-	switch (token.tokenType){
-		case NULL:
-			return null;
-		case TRUE:
-			return Boolean.TRUE;
-		case FALSE:
-			return Boolean.FALSE;
-		case STR:
-			String value = token.text;
-			if(input.getNextToken() != Token.EOF){
-				throw new NoViableTokenException("Unexpected token is " + token.tokenType);
-			}
-			return value;
-		default:
-			throw new NoViableTokenException("Unexpected token is " + token.tokenType);
-	}
+public Token getNextToken()
+    //  ...
+    case '-':
+        return scanNum();
+    default:
+        if(isDigit()) return scanNum();
+            throw new InvalidCharacterException("invalid character: " + c);
 }
 ```
+# Parser
 
-但实际上不止 STR 类型需要这段代码，TRUE，NULL 类型也需要的。因为按原来的解析的话。输入"true true" 这样的字符串也能正确解析的（这不是测试驱动开发的问题，所有测试都有这种问题的，你想不到的用例自然测不到，也没什么好批判的），但实际情况是这种字符串是语法错误的。所以我会改成这样。
-
-```java
-Object parse() throws JSONException {
-	Object value = value();
-	Token token = lexer.getNextToken();
-	if( token!= Token.EOF){
-		throw new NoViableTokenException("Unexpected token is " + token.tokenType);
-	}
-	return value;
-}
-
-private Object value() throws JSONException {
-	Token token = lexer.getNextToken();
-	switch (token.tokenType){
-		case NULL:
-			return null;
-		case TRUE:
-			return Boolean.TRUE;
-		case FALSE:
-			return Boolean.FALSE;
-		case STR:
-			return token.text;
-		default:
-			throw new NoViableTokenException("Unexpected token is " + token.tokenType);
-	}
-}
-```
-
-测试用例也会变成这样。
+测试会是这样的,除了考虑正常情况外，还要考虑 overflow 的问题。
 
 ```java
 @Test
-public void parseString() throws JSONException {
-	assertThatThrownBy(() -> new Parser("\"\"\"").parse())
-		.isInstanceOf(InvalidCharacterException.class);
+public void parseDouble() throws JSONException {
+	assertThat(new Parser("3.14159E10").parse())
+		.isEqualTo(3.14159E10);
 
-	assertThat(new Parser("\"hello world\"").parse())
-		.isEqualTo("hello world");
+	assertThatThrownBy(() -> new Parser("3E308").parse())
+		.isInstanceOf(NumberParseException.class);
 }
 ```
 
-以上就是解析字符串的部分
+parser 也简单。
+```java
+private Object value() throws JSONException {
+	//..
+	case NUM:
+		return Double.valueOf(token.text);;
+	//..
+}
+```

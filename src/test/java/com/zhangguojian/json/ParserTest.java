@@ -38,6 +38,16 @@ public class ParserTest {
     }
 
     @Test
+    public void parseNum() throws JSONException {
+        assertThat(new Parser("3.14159E10").parse())
+                .isEqualTo(3.14159E10);
+
+        assertThat(new Parser("3.3E308").parse())
+                .isEqualTo(Double.POSITIVE_INFINITY);
+
+    }
+
+    @Test
     public void parseEOF() throws JSONException {
         assertThatThrownBy(() -> new Parser("").parse())
                 .isInstanceOf(NoViableTokenException.class);

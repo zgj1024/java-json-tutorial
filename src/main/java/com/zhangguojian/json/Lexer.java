@@ -29,7 +29,10 @@ public class Lexer {
                     return scanTrue();
                 case '"':
                     return scanString();
+                case '-':
+                    return scanNum();
                 default:
+                    if(isDigit()) return scanNum();
                     throw new InvalidCharacterException("invalid character: " + c);
             }
         }
@@ -90,6 +93,72 @@ public class Lexer {
         throw new InvalidCharacterException("invalid token: " + sb.toString());
     }
 
+    private Token scanNum() throws InvalidCharacterException {
+        assert(c == '-' || isDigit());
+
+        StringBuilder sb = new StringBuilder();
+        scanInt(sb);
+        scanFrac(sb);
+        scanExp(sb);
+        if(isSeparatorChar()){
+            return new Token(TokenType.NUM,sb.toString());
+        }
+        throw new InvalidCharacterException("invalid num "+ sb.toString());
+    }
+
+    /* int: digit | onenine digits |  '-' digit | '-' onenine digits */
+    private void scanInt(StringBuilder sb){
+        if(c == '-'){
+            sb.append(c);
+            nextChar();
+        }
+        if(c == '0'){
+            sb.append(c);
+            nextChar();
+        }else {
+            while(isDigit()){
+                sb.append(c);
+                nextChar();
+            }
+        }
+    }
+
+    /* frac: '' || '.' digits */
+    private void scanFrac(StringBuilder sb){
+        if(c=='.'){
+            sb.append(c);
+            nextChar();
+            while (isDigit()){
+                sb.append(c);
+                nextChar();
+            }
+        }
+    }
+
+    /*exp: "" | ("E"|'e') sign digits*/
+    private void scanExp(StringBuilder sb) throws InvalidCharacterException {
+        if(c != 'e' && c != 'E')
+            return;
+
+        sb.append(c);
+        nextChar();
+
+        if(c == '+' || c=='-'){
+            sb.append(c);
+            nextChar();
+        }
+
+        //如果 E 后没有数字的话，是非法的数字，比如 10E
+        if(!isDigit()){
+            throw new InvalidCharacterException("invalid num "+sb.toString());
+        }
+
+        while (isDigit()){
+            sb.append(c);
+            nextChar();
+        }
+    }
+
     private void ESCAPE(StringBuilder sb) throws InvalidCharacterException {
         switch (c) {
             case '\"':
@@ -141,6 +210,10 @@ public class Lexer {
 
     private boolean isHex() {
         return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
+    }
+
+    private boolean isDigit(){
+        return  c >='0' && c <= '9';
     }
 
     private void ws(){

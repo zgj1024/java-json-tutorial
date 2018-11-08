@@ -32,6 +32,8 @@ public class Parser {
                 return Boolean.FALSE;
             case STR:
                 return token.text;
+            case NUM:
+                return Double.valueOf(token.text);
             default:
                 throw new NoViableTokenException("Unexpected token is " + token.tokenType);
         }
