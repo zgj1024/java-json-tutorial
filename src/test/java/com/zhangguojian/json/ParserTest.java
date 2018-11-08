@@ -19,8 +19,22 @@ public class ParserTest {
     public void parseBoolean() throws JSONException {
         assertThat(new Parser("true").parse())
                 .isEqualTo(Boolean.TRUE);
+
         assertThat(new Parser("false").parse())
                 .isEqualTo(Boolean.FALSE);
+
+        //非法的JSON
+        assertThatThrownBy(() -> new Parser("true true").parse())
+                .isInstanceOf(NoViableTokenException.class);
+    }
+
+    @Test
+    public void parseString() throws JSONException {
+        assertThatThrownBy(() -> new Parser("\"\"\"").parse())
+                .isInstanceOf(InvalidCharacterException.class);
+
+        assertThat(new Parser("\"hello world\"").parse())
+                .isEqualTo("hello world");
     }
 
     @Test

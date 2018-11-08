@@ -13,6 +13,15 @@ public class Parser {
     }
 
     Object parse() throws JSONException {
+        Object value = value();
+        Token token = lexer.getNextToken();
+        if(token!= Token.EOF){
+            throw new NoViableTokenException("Unexpected token is " + token.tokenType);
+        }
+        return value;
+    }
+
+    Object value() throws JSONException {
         Token token = lexer.getNextToken();
         switch (token.tokenType){
             case NULL:
@@ -21,6 +30,8 @@ public class Parser {
                 return Boolean.TRUE;
             case FALSE:
                 return Boolean.FALSE;
+            case STR:
+                return token.text;
             default:
                 throw new NoViableTokenException("Unexpected token is " + token.tokenType);
         }

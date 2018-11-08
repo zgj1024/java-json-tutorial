@@ -27,6 +27,8 @@ public class Lexer {
                     return scanFalse();
                 case 't':
                     return scanTrue();
+                case '"':
+                    return scanString();
                 default:
                     throw new InvalidCharacterException("invalid character: " + c);
             }
@@ -62,6 +64,83 @@ public class Lexer {
     private Token scanFalse() throws InvalidCharacterException {
         assert c == 'f';
         return scanText("false", Token.FALSE);
+    }
+
+    private Token scanString() throws InvalidCharacterException {
+        //因为这个函数是内部调用的，而且只有在c == '"' 才会调用的，
+        //直接断言一下就行了，不用写过多的防御性编程。
+        assert (c == '"');
+
+        StringBuilder sb = new StringBuilder();
+        nextChar();
+
+        while (c != EOF) {
+            if (c =='"') {//再次遇到 '"' 才表示字符串结束
+                nextChar();
+                return new Token(TokenType.STR, sb.toString());
+            } else if (c == '\\') {
+                nextChar();
+                //处理转义
+                ESCAPE(sb);
+            } else {
+                sb.append(c);
+                nextChar();
+            }
+        }
+        throw new InvalidCharacterException("invalid token: " + sb.toString());
+    }
+
+    private void ESCAPE(StringBuilder sb) throws InvalidCharacterException {
+        switch (c) {
+            case '\"':
+                sb.append('\"');
+                break;
+            case 'r':
+                sb.append('\r');
+                break;
+            case 'n':
+                sb.append('\n');
+                break;
+            case 'f':
+                sb.append('\f');
+                break;
+            case 'b':
+                sb.append('\b');
+                break;
+            case 't':
+                sb.append('\t');
+                break;
+            case '/':
+                sb.append('/');
+                break;
+            case 'u':
+                //处理 unicode 转义
+                nextChar();
+                int i = 0;
+                StringBuilder unicode = new StringBuilder("");
+                while (i < 4 && isHex()) {
+                    unicode.append(c);
+                    nextChar();
+                    i++;
+                }
+
+                if (i == 4) {
+                    String unicodeStr = unicode.toString();
+                    sb.append((char) Integer.parseInt(unicodeStr, 16));
+                    return;
+                }
+                throw new InvalidCharacterException("invalid token: " + unicode.toString());
+            case '\\':
+                sb.append('\\');
+                break;
+            default:
+                throw new InvalidCharacterException("invalid token: " + sb.toString());
+        }
+        nextChar();
+    }
+
+    private boolean isHex() {
+        return c >= '0' && c <= '9' || c >= 'a' && c <= 'f' || c >= 'A' && c <= 'F';
     }
 
     private void ws(){

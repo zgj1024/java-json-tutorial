@@ -78,6 +78,44 @@ public class LexerTest {
     }
 
     @Test
+    public void testString() throws InvalidCharacterException {
+
+        assertThat(new Lexer("\"\"").getNextToken().text)
+                .isEqualTo("");
+
+
+        assertThat(new Lexer("\"Hello world\"").getNextToken().text)
+                .isEqualTo("Hello world");
+
+        //字符串未完成
+        assertThatThrownBy(() -> new Lexer("\"Hello world").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+
+        //不能有单独的 '\'
+        assertThatThrownBy(() -> new Lexer("\"\\\"").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+        //而在字符串中不能有 '"' 在 Lexer 中很难做到。反而在 parse 中比较容易做。
+        //assertThatThrownBy(() -> new Lexer("\"\"\"").getNextToken()).isInstanceOf(InvalidCharacterException.class);
+
+        //测试转义符
+        assertThat(new Lexer("\"\\r\\n\\b\\f\\\\\\/Hello\\tworld\"").getNextToken().text)
+                .isEqualTo("\r\n\b\f\\/Hello\tworld");
+
+        //测试 uniode
+        assertThat(new Lexer("\"\\u4f60\\u597d\\u4e16\\u754c\"").getNextToken().text)
+                .isEqualTo("你好世界");
+
+        //错误的 unicode 只有三位 Hex 码
+        assertThatThrownBy(() -> new Lexer("\"\\u4f6\"").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+
+        //错误的转义
+        assertThatThrownBy(() -> new Lexer("\"\\k\"").getNextToken())
+                .isInstanceOf(InvalidCharacterException.class);
+
+    }
+
+    @Test
     public void testEOF() throws InvalidCharacterException {
         assertThat(new Lexer("\t\n\r ").getNextToken())
                 .isEqualTo(Token.EOF);
