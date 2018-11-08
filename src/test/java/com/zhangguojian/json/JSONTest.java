@@ -1,12 +1,17 @@
 package com.zhangguojian.json;
 
 
+import java.lang.reflect.Array;
+import java.lang.reflect.InvocationTargetException;
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.*;
 
+import com.zhangguojian.json.bean.Hero;
 import com.zhangguojian.json.bean.Person;
 import com.zhangguojian.json.exception.CastException;
 import com.zhangguojian.json.exception.JSONException;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.IOException;
@@ -47,6 +52,96 @@ public class JSONTest {
                 .isInstanceOf(CastException.class);
     }
 
+    @Test
+    public void testParseWithBind() throws JSONException, InstantiationException, IllegalAccessException, InvocationTargetException {
+        assertThat(JSON.parse("null",Object.class)).isEqualTo(null);
+
+        //boolean
+        assertThat(JSON.parse("true",Boolean.class)).isEqualTo(true);
+        assertThat(JSON.parse("true",boolean.class)).isEqualTo(true);
+        assertThat(JSON.parse("false",Boolean.class)).isEqualTo(false);
+
+        assertThat(JSON.parse("\"Hello\"" ,String.class)).isEqualTo("Hello");
+        assertThat(JSON.parse("123" ,Integer.class)).isEqualTo(Integer.valueOf(123));
+        assertThat(JSON.parse("123" ,int.class)).isEqualTo(Integer.valueOf(123));
+
+        assertThat(JSON.parse("123" ,Short.class)).isEqualTo((short)123);
+        assertThat(JSON.parse("123" ,Long.class)).isEqualTo((long)123);
+        assertThat(JSON.parse("123" ,BigDecimal.class)).isEqualTo(new BigDecimal("123.0"));
+        assertThat(JSON.parse("123" ,BigInteger.class)).isEqualTo(new BigInteger("123"));
+        assertThat(JSON.parse("123" ,Float.class)).isEqualTo(123f);
+        assertThat(JSON.parse("123" ,Double.class)).isEqualTo(123.0);
+
+        assertThat(JSON.parse("[1,2,3,4]" ,List.class)).isEqualTo(JSONArray.asList(1,2,3,4));
+        assertThat(JSON.parse("[1,2,3,4]" ,ArrayList.class)).isEqualTo(JSONArray.asList(1,2,3,4));
+
+        LinkedList linkedList = new LinkedList();
+        linkedList.add(1);
+        linkedList.add(2);
+        linkedList.add(3);
+        linkedList.add(4);
+        assertThat(JSON.parse("[1,2,3,4]" ,LinkedList.class)).isEqualTo(linkedList);
+
+
+        //这是不能实例化的
+        assertThatThrownBy(() -> JSON.parse("[1,2,3,4]" ,Queue.class))
+                .isInstanceOf(InstantiationException.class);
+
+        //要指定事例的对象。
+        JSONContext jsonContext = new JSONContext();
+        jsonContext.addImpl(Queue.class,LinkedBlockingQueue.class);
+
+        LinkedBlockingQueue queueResult = new LinkedBlockingQueue();
+        queueResult.add(1);queueResult.add(2);queueResult.add(3);queueResult.add(4);
+        assertThat(JSON.parse("[1,2,3,4]" ,Queue.class,jsonContext).toString()).isEqualTo(queueResult.toString());
+
+
+        HashMap hashMapResult = new HashMap();
+        hashMapResult.put("name","张三");
+        hashMapResult.put("list",Arrays.asList(1,2,3,4));
+
+        //"强转成 HashMap 而不是 JSONObject"
+        jsonContext.addImpl(HashMap.class,HashMap.class);
+        assertThat(JSON.parse("{\"name\":\"张三\"}" ,HashMap.class,jsonContext).getClass()).isEqualTo(HashMap.class);
+
+        jsonContext.addImpl(JSONArray.class,ArrayList.class);
+        jsonContext.addImpl(JSONObject.class,HashMap.class);
+        //"强转成 HashMap 而不是 JSONObject"
+        //"强转成 JSONArray 而不是 ArrayList"
+        //可以递归执行
+        assertThat(JSON.parse("{\"name\":\"张三\",\"friends\":[{\"name\":\"李四\" }]}" ,HashMap.class,jsonContext).get("friends").getClass()).isEqualTo(ArrayList.class);
+        assertThat(((ArrayList)JSON.parse("{\"name\":\"张三\",\"friends\":[{\"name\":\"李四\" }]}" ,HashMap.class,jsonContext).get("friends")).get(0).getClass()).isEqualTo(HashMap.class);
+
+        //转成对象。难啊
+        Hero hero = new Hero();
+        hero.setName("金庸");
+        assertThat(JSON.parse("{\"name\":\"金庸\"}" ,Hero.class,jsonContext).getName()).isEqualTo(hero.getName());
+
+    }
+
+
+    @Test
+    public void TestParseWithGeneric() throws InvocationTargetException, InstantiationException, JSONException, IllegalAccessException {
+        JSONContext jsonContext = new JSONContext();
+        jsonContext.addImpl(JSONArray.class,ArrayList.class);
+        jsonContext.addImpl(List.class,ArrayList.class);
+
+        LinkedList<BigInteger> BigIntegerList =  JSON.parse("[1,2,3,4]",new TypeReference<LinkedList<BigInteger>>(){},jsonContext);
+        assert BigIntegerList != null;
+        for(BigInteger bigInteger : BigIntegerList){
+            assertThat(bigInteger.getClass()).isEqualTo(BigInteger.class);
+        }
+
+        List<Integer> intList =  JSON.parse("[1,2,3,4]",new TypeReference<List<Integer>>(){},jsonContext);
+        assertThat(intList.getClass()).isEqualTo(ArrayList.class);
+        for(Integer i : intList){
+            assertThat(i.getClass()).isEqualTo(Integer.class);
+        }
+
+        Hero result = JSON.parse("{\"name\":\"金庸\",\"heroList\":[{\"name\":\"夏梦\"},{\"name\":\"大仲马\"}]}" ,Hero.class,jsonContext);
+        assertThat(result.getHeroList().getClass()).isEqualTo(ArrayList.class);
+//        assertThat(result.getHeroList().get(0).getName()).isEqualTo("夏梦");
+    }
 
     @Test
     public void testStringify() throws JSONException {
@@ -141,7 +236,6 @@ public class JSONTest {
         assertThat(result.get("deathAge")).isEqualTo(null);
         assertThat(result.get("numberOfEye")).isEqualTo(null);
         assertThat(result.get("numberOfEar")).isEqualTo(2);
-        
     }
 
 }

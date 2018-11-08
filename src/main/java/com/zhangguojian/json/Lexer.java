@@ -2,7 +2,7 @@ package com.zhangguojian.json;
 
 import com.zhangguojian.json.exception.InvalidCharacterException;
 
-public class Lexer {
+public class Lexer  {
 
     private String input;
 

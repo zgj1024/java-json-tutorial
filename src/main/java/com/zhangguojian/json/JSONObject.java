@@ -8,12 +8,10 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 public class JSONObject<K, V> extends HashMap<K, V> {
@@ -45,9 +43,9 @@ public class JSONObject<K, V> extends HashMap<K, V> {
     public static JSONObject<String, Object> fromObject(Object bean) throws JSONException {
         JSONObject<String, Object> jsonObject = new JSONObject<>();
 
-        List<Method> methodList = ReflectUtils.getMethodsForCovertMap(bean);
+        List<Method> methodList = ReflectUtils.getMethods(bean);
         for (Method method : methodList) {
-            final String key = ReflectUtils.getKeyNameFromMethod(method);
+            final String key = ReflectUtils.getKeyNameFromGetMethod(method);
             if (key != null && !key.isEmpty()) {
                 try {
                     final Object result = method.invoke(bean);
@@ -72,9 +70,6 @@ public class JSONObject<K, V> extends HashMap<K, V> {
         }
         return jsonObject;
     }
-
-
-
 
 
     public JSONObject( int size){

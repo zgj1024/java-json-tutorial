@@ -1,9 +1,6 @@
 package com.zhangguojian.json;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -19,7 +16,7 @@ public class ReflectUtils {
      * @param bean
      * @return
      */
-    static List<Method> getMethodsForCovertMap(Object bean){
+    static List<Method> getMethods(Object bean){
         List<Method> methodList = new ArrayList<>();
         Class<?> cls = bean.getClass();
         boolean includeSuperClass = cls.getClassLoader() != null;
@@ -29,9 +26,7 @@ public class ReflectUtils {
             final int modifiers = method.getModifiers();
             if (Modifier.isPublic(modifiers)
                     && !Modifier.isStatic(modifiers)
-                    && method.getParameterTypes().length == 0
                     && !method.isBridge()
-                    && method.getReturnType() != Void.TYPE
                     && !isMethodsHasJSONIgnore(method)
                     && isValidMethodName(method.getName())) {
                 methodList.add(method);
@@ -45,26 +40,60 @@ public class ReflectUtils {
     }
 
     private static boolean isMethodsHasJSONIgnore(Method method) {
-        if(method.getAnnotation(JSONIgnore.class)!=null){
-            return true;
-        }
+        return getAnnotation(method,JSONIgnore.class)!= null;
+    }
 
+
+    public static <T extends Annotation> T getAnnotation(Method method, Class<T> annotationClass) {
+        if(method.getAnnotation(annotationClass)!=null){
+            return method.getAnnotation(annotationClass);
+        }
         Class<?> c = method.getDeclaringClass();
 
-        //可能是属性的父类实现了 某个接口
+        //可能是属性的实现了 某个接口,在接口上定义了
         for (Class<?> i : c.getInterfaces()) {
             try {
                 Method im = i.getMethod(method.getName(), method.getParameterTypes());
-                return isMethodsHasJSONIgnore(im);
+                return getAnnotation(im,annotationClass);
             } catch (final SecurityException ex) {
                 continue;
             } catch (final NoSuchMethodException ex) {
                 continue;
             }
         }
-        return false;
+        return null;
     }
 
+    /**
+     * javaBean 方法对应的字段名
+     * @param method
+     * @return
+     */
+    public static String getKeyNameFromGetMethod(Method method) {
+        if(method.getParameterTypes().length == 0){
+          return null ;
+        }
+
+        String key;
+        final String name = method.getName();
+        if (name.startsWith("get") && name.length() > 3) {  //其他字段会是用 get 开头的
+            key = name.substring(3);
+        } else if (name.startsWith("is") && name.length() > 2) { //boolean 字段会是用 is开头的
+            key = name.substring(2);
+        } else {
+            return null;
+        }
+
+        if (Character.isLowerCase(key.charAt(0))) {
+            return null;
+        }
+        if (key.length() == 1) {
+            key = key.toLowerCase(Locale.ROOT);
+        } else if (!Character.isUpperCase(key.charAt(1))) {
+            key = key.substring(0, 1).toLowerCase(Locale.ROOT) + key.substring(1);
+        }
+        return key;
+    }
 
 
     /**
@@ -72,13 +101,14 @@ public class ReflectUtils {
      * @param method
      * @return
      */
-    public static String getKeyNameFromMethod(Method method) {
+    public static String getKeyNameFromSetMethod(Method method) {
+        if(method.getParameterTypes().length !=1){
+            return null;
+        }
         String key;
         final String name = method.getName();
-        if (name.startsWith("get") && name.length() > 3) {  //其他字段会是用 get 开头的
+        if (name.startsWith("set") && name.length() > 3) {  //其他字段会是用 get 开头的
             key = name.substring(3);
-        } else if (name.startsWith("is") && name.length() > 2) { //boolean 字段会是用 is开头的
-            key = name.substring(2);
         } else {
             return null;
         }
