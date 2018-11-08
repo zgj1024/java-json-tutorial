@@ -70,7 +70,7 @@ public class ReflectUtils {
      * @return
      */
     public static String getKeyNameFromGetMethod(Method method) {
-        if(method.getParameterTypes().length == 0){
+        if(method.getParameterTypes().length != 0){
           return null ;
         }
 

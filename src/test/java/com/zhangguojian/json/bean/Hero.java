@@ -27,21 +27,21 @@ public class Hero {
     }
 
     @JSONSerialize(using = TimestampSerializer.class)
-    @JSONDeserialize(using = TimestampDeserializer.class)
     public Timestamp getBirthDate() {
         return birthDate;
     }
 
+    @JSONDeserialize(using = TimestampDeserializer.class)
     public void setBirthDate(Timestamp birthDate) {
         this.birthDate = birthDate;
     }
 
     @JSONSerialize(using = DateSerializer.class)
-    @JSONDeserialize(using = DateDeserializer.class)
     public Date getDeathDate() {
         return deathDate;
     }
 
+    @JSONDeserialize(using = DateDeserializer.class)
     public void setDeathDate(Date deathDate) {
         this.deathDate = deathDate;
     }

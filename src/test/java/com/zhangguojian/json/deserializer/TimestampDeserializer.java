@@ -6,10 +6,10 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 
 
-public class TimestampDeserializer implements CustomDeserializer<String,Timestamp> {
+public class TimestampDeserializer implements CustomDeserializer<Long,Timestamp> {
 
     @Override
-    public Timestamp CustomDeserializer(String input) throws ParseException {
-        return Timestamp.valueOf(input);
+    public Timestamp deserialize(Long input) throws ParseException {
+        return new Timestamp(input);
     }
 }

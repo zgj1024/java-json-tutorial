@@ -5,6 +5,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.text.ParseException;
 import java.util.*;
 
 import com.zhangguojian.json.bean.Hero;
@@ -53,7 +54,7 @@ public class JSONTest {
     }
 
     @Test
-    public void testParseWithBind() throws JSONException, InstantiationException, IllegalAccessException, InvocationTargetException {
+    public void testParseWithBind() throws JSONException, InstantiationException, IllegalAccessException, InvocationTargetException, ParseException, ClassNotFoundException {
         assertThat(JSON.parse("null",Object.class)).isEqualTo(null);
 
         //boolean
@@ -121,7 +122,7 @@ public class JSONTest {
 
 
     @Test
-    public void TestParseWithGeneric() throws InvocationTargetException, InstantiationException, JSONException, IllegalAccessException {
+    public void TestParseWithGeneric() throws InvocationTargetException, InstantiationException, JSONException, IllegalAccessException, ParseException, ClassNotFoundException {
         JSONContext jsonContext = new JSONContext();
         jsonContext.addImpl(JSONArray.class,ArrayList.class);
         jsonContext.addImpl(List.class,ArrayList.class);

@@ -87,6 +87,7 @@ public class JSONObjectTest {
 
         JSONObject result = JSONObject.fromObject(person);
         assertThat(result.get("name")).isEqualTo("张三");
+
         //Object to Map 泛型也没用啊，value 不能确认类型的!!!
         JSONArray<Integer> resultArray = (JSONArray<Integer>) result.get("array1");
         assertThat(resultArray).isEqualTo(JSONArray.asList(1,2,3));

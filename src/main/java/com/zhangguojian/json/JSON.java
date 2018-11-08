@@ -15,12 +15,11 @@ public class JSON {
         return new Parser(input).parse();
     }
 
-    public static <T> T parse(String input, Class<T> cls) throws IllegalAccessException, JSONException, InstantiationException, InvocationTargetException {
+    public static <T> T parse(String input, Class<T> cls) throws IllegalAccessException, JSONException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
         return parse(input, cls, new JSONContext());
     }
 
-
-    public static <T> T parse(String input, Class<T> cls, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException {
+    public static <T> T parse(String input, Class<T> cls, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
         Object jsonResult = new Parser(input).value();
         if (jsonResult == null) {
             return null;
@@ -28,7 +27,7 @@ public class JSON {
         return bind(jsonResult, cls, context);
     }
 
-    public static <T> T parse(String input, TypeReference valueTypeRef, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException {
+    public static <T> T parse(String input, TypeReference valueTypeRef, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
         Object jsonResult = new Parser(input).value();
         if (jsonResult == null) {
             return null;
@@ -39,7 +38,7 @@ public class JSON {
         return bind((JSONArray)jsonResult, valueTypeRef, context);
     }
 
-    public static  <T> T bind(JSONArray array, TypeReference valueTypeRef,JSONContext context) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException {
+    public static <T> T bind(JSONArray array, TypeReference valueTypeRef,JSONContext context) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException, ParseException, ClassNotFoundException {
         Type type = valueTypeRef.getType();
         if(type instanceof Class){
             Class<T> cls = (Class<T>) type;
@@ -73,7 +72,11 @@ public class JSON {
     }
 
     @SuppressWarnings(value={"unchecked", "rawtypes"})
-    public static <T> T bind(Object jsonResult, Class<T> cls, JSONContext context) throws IllegalAccessException, InstantiationException, CastException, InvocationTargetException {
+    public static <T> T bind(Object jsonResult, Class<T> cls) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException, ParseException, ClassNotFoundException {
+        return bind(jsonResult,cls,new JSONContext());
+    }
+    @SuppressWarnings(value={"unchecked", "rawtypes"})
+    public static <T> T bind(Object jsonResult, Class<T> cls, JSONContext context) throws IllegalAccessException, InstantiationException, CastException, InvocationTargetException, ParseException, ClassNotFoundException {
 
         //JSONArray 是 List 的一个实例，所以， cls 为 List 的时候，会直接返回 JSONArray
         if (cls.isInstance(jsonResult) && context.implMap.get(cls) == null) {//类型相等
@@ -152,7 +155,7 @@ public class JSON {
         return bindObj((JSONObject<String, Object>) jsonResult, cls, context);
     }
 
-    private static <T> T bindObj(JSONObject<String, Object> jsonObject, Class<T> cls, JSONContext context) throws CastException, IllegalAccessException, InstantiationException, InvocationTargetException {
+    private static <T> T bindObj(JSONObject<String, Object> jsonObject, Class<T> cls, JSONContext context) throws CastException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
         //如果是抽象类 而且 没有实现类 抛出异常了
         if ((cls.isInterface() || Modifier.isAbstract(cls.getModifiers())) && context.implMap.get(cls) == null) {
             throw new CastException(jsonObject.getClass() + " can not cast to " + cls);
@@ -169,14 +172,29 @@ public class JSON {
             final String key = ReflectUtils.getKeyNameFromSetMethod(method);
             if (key != null && !key.isEmpty()) {
                 Object value = jsonObject.get(key);
+                Object result = null ;
                 if (value == null) continue;
                 //如果方法中有泛型，但只支持实现了 Collection 接口的泛型
                 if(value instanceof JSONArray && method.getGenericParameterTypes().length == 1){
-                    Object result = bind((JSONArray) value,new TypeReference(method.getGenericParameterTypes()[0]){}, context);
-                    method.invoke(resultObject,result);
+                    result = bind((JSONArray) value,new TypeReference(method.getGenericParameterTypes()[0]){}, context);
+
                 }else {
-                    method.invoke(resultObject,bind(value, value.getClass(), context));
+                    //如果有 JSONSerialize 的注解，最终得到会是已经被处理过的结果。
+                    JSONDeserialize jsonDeserialize = ReflectUtils.getAnnotation(method, JSONDeserialize.class);
+                    if (jsonDeserialize != null) {
+                        //获取注解中的using 类
+                        String className = jsonDeserialize.using().getName();
+                        //get class Name
+                        //获取 using 中的 泛型类。
+                        jsonDeserialize.using().getTypeParameters();
+                        CustomDeserializer deserializer = (CustomDeserializer) Class.forName(className).newInstance();
+                        result = deserializer.deserialize(value);
+                    }else {
+                        result = bind(value, value.getClass(), context);
+                    }
                 }
+
+                method.invoke(resultObject,result);
             }
         }
 

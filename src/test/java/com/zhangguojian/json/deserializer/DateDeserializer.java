@@ -11,7 +11,7 @@ public class DateDeserializer implements CustomDeserializer<String,Date> {
     private  static DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     @Override
-    public Date CustomDeserializer(String input) throws ParseException {
+    public Date deserialize(String input) throws ParseException {
         return sdf.parse(input);
     }
 }
