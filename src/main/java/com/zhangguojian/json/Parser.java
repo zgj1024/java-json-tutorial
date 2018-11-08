@@ -6,14 +6,14 @@ import com.zhangguojian.json.exception.NoViableTokenException;
 
 public class Parser {
 
-    private Lexer input;
+    private Lexer lexer;
 
-    public Parser(Lexer input) {
-        this.input = input;
+    public Parser(String input) {
+        this.lexer = new Lexer(input);
     }
 
     Object parse() throws JSONException {
-        Token token = input.getNextToken();
+        Token token = lexer.getNextToken();
         switch (token.tokenType){
             case NULL:
                 return null;
