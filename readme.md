@@ -128,5 +128,4 @@ Assert.assertEquals(new Timestamp(-1445760000000L),hero.getBirthDate());
 
 
 # TOOD 
-
-- [] 支持 Reader 构造 Parser
+- [ ] 支持 Reader 构造 Parser
