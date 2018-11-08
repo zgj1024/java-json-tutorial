@@ -135,6 +135,15 @@ public class LexerTest {
     }
 
     @Test
+    public void testArray() throws InvalidCharacterException {
+        Lexer lexer = new Lexer("[1,2]");
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.LB);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COMMA);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RB);
+    }
+    @Test
     public void testEOF() throws InvalidCharacterException {
         assertThat(new Lexer("\t\n\r ").getNextToken())
                 .isEqualTo(Token.EOF);
