@@ -8,6 +8,7 @@ import org.junit.Test;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Map;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -81,6 +82,13 @@ public class ParserTest {
 
         assertThatThrownBy(() -> new Parser("[1,2,]").parse())
                 .isInstanceOf(NoViableTokenException.class);
+    }
+
+    @Test
+    public void parseObject() throws JSONException {
+        Map<String,Object> map = (Map<String, Object>) new Parser("{\"name\":\"John Smith\",\"age\":15 }").parse();
+        assertThat(map.get("name")).isEqualTo("John Smith");
+
     }
 
     @Test

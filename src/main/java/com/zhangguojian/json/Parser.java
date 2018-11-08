@@ -5,9 +5,7 @@ import com.zhangguojian.json.exception.InvalidCharacterException;
 import com.zhangguojian.json.exception.JSONException;
 import com.zhangguojian.json.exception.NoViableTokenException;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static com.zhangguojian.json.TokenType.*;
 
@@ -48,6 +46,8 @@ public class Parser {
                 return numValue;
             case LB:
                 return parseArray();
+            case LP:
+                return parseObj();
             default:
                 throw new NoViableTokenException("Unexpected token is " + forward.tokenType);
         }
@@ -80,6 +80,38 @@ public class Parser {
     /* element: value */
     private void element(List<Object> array) throws JSONException {
         array.add(value());
+    }
+
+    /* */
+     /* object: '{' '}' | '{' members '}' */
+    private Map<String,Object> parseObj() throws JSONException {
+        match(LP);
+        if (forward.tokenType == RP) {
+            match(RP);
+            return new HashMap<>();
+        } else {
+            Map<String,Object> objMap = new HashMap<>();
+            members(objMap);
+            match(RP);
+            return objMap;
+        }
+    }
+
+    /* members : member , members */
+    private void members(Map<String,Object> objMap) throws JSONException {
+        member(objMap);
+        while (forward.tokenType == COMMA) {
+            match(COMMA);
+            members(objMap);
+        }
+    }
+
+    /* member: string ':' element */
+    private void member(Map<String,Object> map) throws JSONException {
+        String key = forward.text;
+        match(STR);
+        match(COLON);
+        map.put(key, value());
     }
 
     private void match(TokenType tokenType) throws JSONException {

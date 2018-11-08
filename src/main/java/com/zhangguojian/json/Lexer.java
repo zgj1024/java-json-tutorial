@@ -40,6 +40,15 @@ public class Lexer {
                 case ',':
                     nextChar();
                     return Token.COMMA;
+                case '{':
+                    nextChar();
+                    return Token.LP;
+                case '}':
+                    nextChar();
+                    return Token.RP;
+                case ':':
+                    nextChar();
+                    return Token.COLON;
                 default:
                     if(isDigit()) return scanNum();
                     throw new InvalidCharacterException("invalid character: " + c);

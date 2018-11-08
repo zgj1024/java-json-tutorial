@@ -143,6 +143,21 @@ public class LexerTest {
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RB);
     }
+
+    @Test
+    public void testObject() throws InvalidCharacterException {
+        Lexer lexer = new Lexer("{\"name\":\"John Smith\",\"age\":15 }");
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.LP);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COLON);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COMMA);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COLON);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RP);
+    }
+
     @Test
     public void testEOF() throws InvalidCharacterException {
         assertThat(new Lexer("\t\n\r ").getNextToken())
