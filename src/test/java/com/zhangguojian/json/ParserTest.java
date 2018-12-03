@@ -6,7 +6,6 @@ import com.zhangguojian.json.exception.NoViableTokenException;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
@@ -89,6 +88,8 @@ public class ParserTest {
         Map<String,Object> map = (Map<String, Object>) new Parser("{\"name\":\"John Smith\",\"age\":15 }").parse();
         assertThat(map.get("name")).isEqualTo("John Smith");
 
+        map = (Map<String, Object>) new Parser("{}").parse();
+        assertThat(map.isEmpty()).isTrue();
     }
 
     @Test

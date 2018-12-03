@@ -82,8 +82,7 @@ public class Parser {
         array.add(value());
     }
 
-    /* */
-     /* object: '{' '}' | '{' members '}' */
+    /* object: '{' '}' | '{' members '}' */
     private Map<String,Object> parseObj() throws JSONException {
         match(LP);
         if (forward.tokenType == RP) {

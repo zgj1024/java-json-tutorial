@@ -20,7 +20,7 @@ public class Lexer {
     public Token getNextToken() throws InvalidCharacterException {
         while (c!=EOF){
             switch (c){
-                case '\r': case '\n': case '\t': case ' ':ws();break;
+                case '\r': case '\n': case '\t': case ' ':nextChar();break;
                 case 'n':
                     return scanNull();
                 case 'f':
@@ -232,11 +232,6 @@ public class Lexer {
 
     private boolean isDigit(){
         return  c >='0' && c <= '9';
-    }
-
-    private void ws(){
-        while (c == ' ' || c== '\t' || c == '\r' || c == '\n')
-            nextChar();
     }
 
     private boolean isSeparatorChar(){
