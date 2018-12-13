@@ -105,6 +105,11 @@ public class ReflectUtils {
         if(method.getParameterTypes().length !=1){
             return null;
         }
+
+        JSONAlias jsonAlias ;
+        if((jsonAlias = getAnnotation(method,JSONAlias.class))!=null){
+            return jsonAlias.name();
+        }
         String key;
         final String name = method.getName();
         if (name.startsWith("set") && name.length() > 3) {  //其他字段会是用 get 开头的

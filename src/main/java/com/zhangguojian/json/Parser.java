@@ -1,78 +1,59 @@
 package com.zhangguojian.json;
 
-import com.zhangguojian.json.exception.InvalidCharacterException;
 import com.zhangguojian.json.exception.JSONException;
 import com.zhangguojian.json.exception.NoViableTokenException;
 
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.List;
+import java.io.IOException;
+import java.io.Reader;
 
+import static com.zhangguojian.json.ParserUtils.parseNumber;
 import static com.zhangguojian.json.TokenType.*;
 
 public class Parser {
 
     private Lexer input;
-    private Token forward;
+    private Token forward = null ;
 
-    public Parser(String input) throws InvalidCharacterException {
+    public Parser(Reader input)  {
         this.input = new Lexer(input);
-        this.forward = this.input.getNextToken();
     }
 
-    JSONValue parse() throws JSONException {
-        Object value = value();
+    public Parser(String input)  {
+        this.input = new Lexer(input);
+    }
+
+    public JSONElement parse() throws JSONException, IOException {
+        JSONElement value = value();
         match(EOF);
-        return JSONValue.of(value);
+        return value;
     }
 
-    private static boolean isDecimalNotation(final String val) {
-        return val.indexOf('.') > -1 || val.indexOf('e') > -1
-                || val.indexOf('E') > -1 || "-0".equals(val);
-    }
 
-    static Number parseNumber(final String val){
-        if (isDecimalNotation(val)) {
-            final Double d = Double.valueOf(val);
-            if (d.isInfinite() || d.isNaN()) {
-                return new BigDecimal(val);
-            }
-            return d;
+    public JSONElement value() throws JSONException, IOException {
+        if(forward == null){
+            forward = input.getNextToken();
         }
-
-        BigInteger bigIntValue = new BigInteger(val);
-        if(bigIntValue.bitLength()<=31){
-            return bigIntValue.intValue();
-        }
-        if(bigIntValue.bitLength()<=63){
-            return bigIntValue.longValue();
-        }
-        return bigIntValue;
-
-    }
-
-    public Object value() throws JSONException {
         switch (forward.tokenType) {
             case NULL:
                 match(NULL);
-                return null;
+                return JSONNull.INSTANCE;
             case TRUE:
                 match(TRUE);
-                return Boolean.TRUE;
+                return JSONPrimitive.of(true);
             case FALSE:
                 match(FALSE);
-                return Boolean.FALSE;
+                return JSONPrimitive.of(false);
             case STR:
                 String strValue = forward.text;
                 match(STR);
-                return strValue;
+                return JSONPrimitive.of(strValue);
             case NUM:
                 String numText =forward.text;
                 match(NUM);
-                return parseNumber(numText);
-            case LB:
+                return JSONPrimitive.of(parseNumber(numText));
+            case BEGIN_ARRAY:
                 return parseArray();
-            case LP:
+            case BEGIN_OBJ:
                 return parseObj();
             default:
                 throw new NoViableTokenException("Unexpected token is " + forward.tokenType);
@@ -80,22 +61,22 @@ public class Parser {
     }
 
     /* array: '[' ']' | '[' elements '] */
-    private JSONArray parseArray() throws JSONException {
-        match(LB);
+    private JSONArray parseArray() throws JSONException, IOException {
+        match(BEGIN_ARRAY);
 
-        if (forward.tokenType == RB) {
-            match(RB);
+        if (forward.tokenType == END_ARRAY) {
+            match(END_ARRAY);
             return JSONArray.EMPTY;
         } else {
-            JSONArray array = new JSONArray();
+            JSONArray array =  new JSONArray();
             elements(array);
-            match(RB);
+            match(END_ARRAY);
             return array;
         }
     }
 
     /* elements: element (',' element)* */
-    private void elements(List<Object> array) throws JSONException {
+    private void elements(JSONArray array) throws JSONException, IOException {
         element(array);
         while (forward.tokenType == COMMA) {
             match(COMMA);
@@ -104,26 +85,26 @@ public class Parser {
     }
 
     /* element: value */
-    private void element(List<Object> array) throws JSONException {
+    private void element(JSONArray array) throws JSONException, IOException {
         array.add(value());
     }
 
     /* object: '{' '}' | '{' members '}' */
-    private JSONObject parseObj() throws JSONException {
-        match(LP);
-        if (forward.tokenType == RP) {
-            match(RP);
+    private JSONObject parseObj() throws JSONException, IOException {
+        match(BEGIN_OBJ);
+        if (forward.tokenType == END_OBJ) {
+            match(END_OBJ);
             return JSONObject.EMPTY;
         } else {
             JSONObject objMap = new JSONObject();
             members(objMap);
-            match(RP);
+            match(END_OBJ);
             return objMap;
         }
     }
 
     /* members : member , members */
-    private void members(JSONObject objMap) throws JSONException {
+    private void members(JSONObject objMap) throws JSONException, IOException {
         member(objMap);
         while (forward.tokenType == COMMA) {
             match(COMMA);
@@ -132,19 +113,22 @@ public class Parser {
     }
 
     /* member: string ':' element */
-    private void member(JSONObject map) throws JSONException {
+    private void member(JSONObject map) throws JSONException, IOException {
         String key = forward.text;
         match(STR);
         match(COLON);
-        map.put(key, value());
+        map.add(key, value());
     }
 
-    private void match(TokenType tokenType) throws JSONException {
+    public Token match(TokenType tokenType) throws JSONException, IOException {
         if (forward.tokenType == tokenType) {
+            Token token = forward;
             this.forward = input.getNextToken();
+            return token;
         } else {
             throw new NoViableTokenException("expected token is " + tokenType
                     + " but actual is " + forward.tokenType);
         }
     }
+
 }

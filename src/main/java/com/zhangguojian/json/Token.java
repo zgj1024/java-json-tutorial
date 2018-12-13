@@ -6,10 +6,10 @@ public class Token {
     public final static Token NULL = new Token(TokenType.NULL,"null");
     public final static Token EOF = new Token(TokenType.EOF,"");
     public final static Token COMMA = new Token(TokenType.COMMA,",");
-    public final static Token LB = new Token(TokenType.LB,"[");
-    public final static Token RB = new Token(TokenType.RB,"]");
-    public final static Token LP = new Token(TokenType.LP,"{");
-    public final static Token RP = new Token(TokenType.RP,"}");
+    public final static Token LB = new Token(TokenType.BEGIN_ARRAY,"[");
+    public final static Token RB = new Token(TokenType.END_ARRAY,"]");
+    public final static Token LP = new Token(TokenType.BEGIN_OBJ,"{");
+    public final static Token RP = new Token(TokenType.END_OBJ,"}");
     public final static Token COLON = new Token(TokenType.COLON,":");
 
 

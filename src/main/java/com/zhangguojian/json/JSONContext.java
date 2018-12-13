@@ -1,14 +1,17 @@
 package com.zhangguojian.json;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class JSONContext {
-    public  Map<Class,Class> implMap = new HashMap<>();
-    public  Map<Class,Class> aliasMap = new HashMap<>();
+    private Map<Class,Class> implMap = new ConcurrentHashMap<>();
 
-
-    public void addImpl(Class inf,Class impl){
-        implMap.put(inf,impl);
+    public Class getImplCls(Class cls){
+        return implMap.get(cls);
     }
+
+    public void putImplCls(Class cls,Class impl){
+        implMap.put(cls,impl);
+    }
+
 }

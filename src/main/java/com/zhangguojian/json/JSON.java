@@ -3,167 +3,246 @@ package com.zhangguojian.json;
 import com.zhangguojian.json.exception.CastException;
 import com.zhangguojian.json.exception.JSONException;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.Writer;
 import java.lang.reflect.*;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.text.ParseException;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
-public class JSON {
+public final class JSON {
 
-    public static JSONValue parse(String input) throws JSONException {
+    public static JSONElement parse(String input) throws JSONException, IOException, InvocationTargetException, ClassNotFoundException, InstantiationException, ParseException, IllegalAccessException {
+        return parse(new StringReader(input));
+    }
+
+    public static JSONElement parse(Reader input) throws JSONException, IOException {
         return new Parser(input).parse();
     }
 
-    public static <T> T parse(String input, Class<T> cls) throws IllegalAccessException, JSONException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
+    public static <T> T parse(Reader input, Class<T> cls) throws JSONException, IOException, ClassNotFoundException, InstantiationException, IllegalAccessException, ParseException, InvocationTargetException {
         return parse(input, cls, new JSONContext());
     }
 
-    public static <T> T parse(String input, Class<T> cls, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
-        Object jsonResult = new Parser(input).value();
+    public static <T> T parse(String input, Class<T> cls) throws JSONException, IOException, ClassNotFoundException, InstantiationException, IllegalAccessException, ParseException, InvocationTargetException {
+        return parse(new StringReader(input), cls, new JSONContext());
+    }
+
+    public static <T> T parse(String input, Class<T> cls, JSONContext context) throws IOException, JSONException, InvocationTargetException, ClassNotFoundException, InstantiationException, ParseException, IllegalAccessException {
+        JSONElement jsonResult = new Parser(input).value();
         if (jsonResult == null) {
             return null;
         }
         return bind(jsonResult, cls, context);
     }
 
-    public static <T> T parse(String input, TypeReference valueTypeRef, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
-        Object jsonResult = new Parser(input).value();
+    public static <T> T parse(Reader input, Class<T> cls, JSONContext context) throws IOException, JSONException, InvocationTargetException, ClassNotFoundException, InstantiationException, ParseException, IllegalAccessException {
+        JSONElement jsonResult = new Parser(input).value();
         if (jsonResult == null) {
             return null;
         }
-        if(!(jsonResult instanceof JSONArray)){
-            throw new CastException(jsonResult.getClass() + " can not cast to " +  valueTypeRef.getType());
-        }
-        return bind((JSONArray)jsonResult, valueTypeRef, context);
+        return bind(jsonResult, cls, context);
     }
 
-    public static <T> T bind(JSONArray array, TypeReference valueTypeRef,JSONContext context) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException, ParseException, ClassNotFoundException {
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    public static <T> T parse(String input, TypeReference valueTypeRef) throws IllegalAccessException, ParseException, InstantiationException, JSONException, IOException, InvocationTargetException, ClassNotFoundException {
+        return parse(new StringReader(input), valueTypeRef, new JSONContext());
+    }
+
+    public static <T> T parse(String input, TypeReference valueTypeRef,JSONContext jsonContext) throws IllegalAccessException, ParseException, InstantiationException, JSONException, IOException, InvocationTargetException, ClassNotFoundException {
+        return parse(new StringReader(input), valueTypeRef, jsonContext);
+    }
+
+
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    public static <T> T parse(Reader input, TypeReference valueTypeRef, JSONContext context) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException, IOException {
+        JSONElement element = new Parser(input).value();
+        return bind(element, valueTypeRef, context);
+    }
+
+    public static <T> T bind(JSONElement element, TypeReference valueTypeRef, JSONContext context) throws IllegalAccessException, CastException, ParseException, InstantiationException, InvocationTargetException, ClassNotFoundException {
+        if (element == null || element.isJSONNull()) {
+            return null;
+        }
         Type type = valueTypeRef.getType();
-        if(type instanceof Class){
+        if (type instanceof Class) {
             Class<T> cls = (Class<T>) type;
-            return bind(array, cls,context);
-        }else if(type instanceof ParameterizedType){
-            Class<T> cls= (Class<T>) ((ParameterizedType) type).getRawType();
-
-            if ((cls.isInterface() || Modifier.isAbstract(cls.getModifiers())) && context.implMap.get(cls) == null) {
-                throw new CastException(cls +" is interface or abstract or implements Class not find ,"+ array.getClass() + " can not cast to " + cls);
-            }
-
-            if(!(Collection.class.isAssignableFrom(cls))){
-                throw new CastException(array.getClass() + " can not cast to " + cls.getClass());
-            }
-            Class<T> impl = cls;
-            if (context.implMap.get(cls) != null) {
-                impl = context.implMap.get(cls);
-            }
-
-            Collection collection = (Collection) impl.newInstance();
-
-            Type type2 = ((ParameterizedType) type).getActualTypeArguments()[0];
-
-            for(Object o : array){
-                collection.add(bind(o, (Class<T>) type2,context));
-            }
-            return (T) collection;
+            return bind(element, cls, context);
         }
-        throw new CastException(array.getClass() + " can not cast to " + type);
+
+        if (element instanceof JSONArray) {
+            return bind(((JSONArray) element).getElements(), valueTypeRef, context);
+        }
+
+        if (element instanceof JSONObject) {
+            return bind(((JSONObject) element).getMembers(), valueTypeRef, context);
+        }
+
+        throw new CastException(element.getClass() + " can not cast to " + valueTypeRef.getType() );
+    }
+
+    private static <T> T bind(Object obj, TypeReference valueTypeRef, JSONContext context) throws IllegalAccessException, CastException, ParseException, InstantiationException, InvocationTargetException, ClassNotFoundException {
+        if (obj == null) {
+            return null;
+        }
+        if (obj instanceof JSONElement) {
+            JSONElement jsonElement = (JSONElement) obj;
+            return bind(jsonElement, valueTypeRef, context);
+        }
+        Type type = valueTypeRef.getType();
+        if (type instanceof Class) {
+            Class<T> cls = (Class<T>) type;
+            return bind(obj, cls, context);
+        }
+
+        if (obj instanceof Collection || obj.getClass().isArray()) {
+            return bindArray(obj, valueTypeRef, context);
+        }
+
+        if (obj instanceof Map) {
+            return bindObj((Map<?,?>)obj, valueTypeRef, context);
+        }
+        throw new CastException(obj.getClass() + " can not cast to " + valueTypeRef.getType() );
 
     }
 
-    @SuppressWarnings(value={"unchecked", "rawtypes"})
-    public static <T> T bind(Object jsonResult, Class<T> cls) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException, ParseException, ClassNotFoundException {
-        return bind(jsonResult,cls,new JSONContext());
-    }
-    @SuppressWarnings(value={"unchecked", "rawtypes"})
-    public static <T> T bind(Object jsonResult, Class<T> cls, JSONContext context) throws IllegalAccessException, InstantiationException, CastException, InvocationTargetException, ParseException, ClassNotFoundException {
 
-        //JSONArray 是 List 的一个实例，所以， cls 为 List 的时候，会直接返回 JSONArray
-        if (cls.isInstance(jsonResult) && context.implMap.get(cls) == null) {//类型相等
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    private static <T> T bind(JSONElement jsonResult, Class<T> cls, JSONContext context) throws IllegalAccessException, InstantiationException, CastException, InvocationTargetException, ParseException, ClassNotFoundException {
+        if (jsonResult == null || jsonResult.isJSONNull()) {
+            return null;
+        }
+
+        if (cls.isInstance(jsonResult) && context.getImplCls(cls) == null) {//类型相等
             return (T) jsonResult;
         }
 
-        if (jsonResult instanceof Boolean && (cls == Boolean.class ||cls == boolean.class)) {
-            Boolean t = (Boolean) jsonResult;
-            return (T) t;
+        if (cls == String.class) {
+            return (T) jsonResult.getAsString();
+        }
+        if (cls == Character.class || cls == char.class) {
+            return (T) Character.valueOf(jsonResult.getAsCharacter());
         }
 
-        if (jsonResult instanceof Number) {//number类型
-            if (cls == Byte.class || cls == byte.class) {
-                Byte number = ((Number) jsonResult).byteValue();
-                return (T) number;
-            } else if (cls == Short.class || cls == short.class) {
-                Short number = ((Number) jsonResult).shortValue();
-                return (T) number;
-            } else if (cls == Integer.class || cls == int.class) {
-                Integer number = ((Number) jsonResult).intValue();
-                return (T) number;
-            } else if (cls == Long.class || cls == long.class) {
-                Long number = ((Number) jsonResult).longValue();
-                return (T) number;
-            } else if (cls == BigInteger.class) {
-                BigInteger number = BigInteger.valueOf(((Number) jsonResult).longValue());
-                return (T) number;
-            } else if (cls == Float.class || cls == float.class) {
-                Float number = ((Number) jsonResult).floatValue();
-                return (T) number;
-            } else if (cls == Double.class || cls == double.class) {
-                Double number = ((Number) jsonResult).doubleValue();
-                return (T) number;
-            } else if (cls == BigDecimal.class) {
-                BigDecimal number = BigDecimal.valueOf(((Number) jsonResult).doubleValue());
-                return (T) number;
-            }
+        if (jsonResult.isJSONPrimitive()) {
+            JSONPrimitive jsonPrimitive = (JSONPrimitive) jsonResult;
+            return bind(jsonPrimitive.getValue(), cls, context);
         }
 
-
-        //这种方式 泛型不够 泛型
-        //如果是实现了 Collection的接口的具体类，比如 LinkedList等
-        if (Collection.class.isAssignableFrom(cls) && jsonResult instanceof JSONArray) {
-            Class CollectionImpl = context.implMap.get(cls);
-            if (CollectionImpl == null) {
-                CollectionImpl = cls;
-            }
-            Collection collection = (Collection) CollectionImpl.newInstance();
-            JSONArray jsonArrayResult = (JSONArray) jsonResult;
-            for (Object object : jsonArrayResult) {
-                collection.add(bind(object, object.getClass(), context));
-            }
-            return (T) collection;
+        if (jsonResult.isJSONArray()) {
+            JSONArray jsonArray = (JSONArray) jsonResult;
+            return bind(jsonArray.getElements(), cls, context);
         }
 
-        //Map type 也一样吧。
-        if (Map.class.isAssignableFrom(cls) && jsonResult instanceof JSONObject) {
-            JSONObject<String, Object> jsonObject = (JSONObject<String, Object>) jsonResult;
-            Class mapImpl = context.implMap.get(cls);
-            if (mapImpl == null) {
-                mapImpl = cls;
-            }
-
-            Map map = (Map) mapImpl.newInstance();
-            for (Map.Entry<String, Object> entry : jsonObject.entrySet()) {
-                Object value = entry.getValue();
-                map.put(entry.getKey(), bind(entry.getValue(), value.getClass(), context));
-            }
-            return (T) map;
-        }
-
-        if (!(jsonResult instanceof JSONObject)) {//只支持 JSONObject 转成对象
-            throw new CastException(jsonResult.getClass() + " can not cast to " + cls);
-        }
-        //普通的 Object 类，用反射
-        return bindObj((JSONObject<String, Object>) jsonResult, cls, context);
+        JSONObject jsonObject = (JSONObject) jsonResult;
+        return bind(jsonObject.getMembers(), cls, context);
     }
 
-    private static <T> T bindObj(JSONObject<String, Object> jsonObject, Class<T> cls, JSONContext context) throws CastException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    private static <T> T bind(Object result, Class<T> cls, JSONContext context) throws IllegalAccessException, InstantiationException, CastException, InvocationTargetException, ParseException, ClassNotFoundException {
+        if (result == null) {
+            return null;
+        } else if (result instanceof JSONElement) {
+            JSONElement jsonElement = (JSONElement) result;
+            return bind(jsonElement, cls, context);
+        } else if (cls.isInstance(result) && context.getImplCls(cls) == null) {//类型相等
+            return (T) result;
+        } else if (result instanceof Boolean && cls == Boolean.class || cls == boolean.class) {
+            return (T) result;
+        } else if (result instanceof Character && cls == Character.class || cls == char.class) {
+            return (T) result;
+        } else if (result instanceof Number) {
+            Number number = (Number) result;
+            if (cls == Byte.class || cls == byte.class) {
+                return (T) Byte.valueOf(number.byteValue());
+            } else if (cls == Short.class || cls == short.class) {
+                return (T) Short.valueOf(number.shortValue());
+            } else if (cls == Integer.class || cls == int.class) {
+                return (T) Integer.valueOf(number.intValue());
+            } else if (cls == Long.class || cls == long.class) {
+                return (T) Long.valueOf(number.longValue());
+            } else if (cls == BigInteger.class && number instanceof BigInteger) {
+                return (T) number;
+            } else if (cls == BigInteger.class) {
+                return (T) BigInteger.valueOf(number.longValue());
+            } else if (cls == Float.class || cls == float.class) {
+                return (T) Float.valueOf(number.floatValue());
+            } else if (cls == Double.class || cls == double.class) {
+                return (T) Double.valueOf(number.doubleValue());
+            } else if (cls == BigDecimal.class) {
+                return (T) BigDecimal.valueOf(((Number) result).doubleValue());
+            }
+        }
+
+        Class implCls = cls;
+        if (context.getImplCls(implCls) != null) {
+            implCls = context.getImplCls(implCls);
+        }
+
+        if ((isArray(cls) && isArray(result.getClass()))) {
+            return bindArray(result, cls, context);
+        }
+
+        if (Map.class.isAssignableFrom(implCls)) {
+            throw new CastException(result.getClass() + " can not cast to " + cls + " please use TypeReference");
+        }
+
+
+        return (T) bindObj((Map<?, ?>) result, implCls, context);
+
+    }
+
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    private static <T> T bindArray(Object result, Class<T> cls, JSONContext context) throws IllegalAccessException, CastException, ParseException, InstantiationException, InvocationTargetException, ClassNotFoundException {
+        assert isArray(result.getClass()) && isArray(cls);
+
+        if (cls.isArray()) {
+            if (result instanceof Collection) {
+                Collection resultCollection = (Collection) result;
+                int size = resultCollection.size();
+                //Object array = cls.n
+                int i = 0;
+                Object bindArray = Array.newInstance(cls.getComponentType(), size);
+                for (Object obj : resultCollection) {
+                    // arrayList.
+                    Array.set(bindArray, i, bind(obj, cls.getComponentType(), context));
+                    i++;
+                }
+                return (T) bindArray;
+            } else {
+                int size = Array.getLength(result);
+                Object bindArray = Array.newInstance(cls.getComponentType(), size);
+                for (int i = 0; i < size; i++) {
+                    Array.set(bindArray, i, bind(bindArray, cls.getComponentType(), context));
+                }
+                return (T) bindArray;
+            }
+        }
+
+        throw new CastException(result.getClass() + " can not cast to " + cls + " please use TypeReference");
+
+    }
+
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    /**
+     * 将 map 和 object 绑定在一起
+     * @param result
+     */
+    private static <T> T bindObj(Map<?, ?> jsonObject, Class<T> cls, JSONContext context) throws
+            CastException, IllegalAccessException, InstantiationException, InvocationTargetException, ParseException, ClassNotFoundException {
         //如果是抽象类 而且 没有实现类 抛出异常了
-        if ((cls.isInterface() || Modifier.isAbstract(cls.getModifiers())) && context.implMap.get(cls) == null) {
+        if ((cls.isInterface() || Modifier.isAbstract(cls.getModifiers())) && context.getImplCls(cls) == null) {
             throw new CastException(jsonObject.getClass() + " can not cast to " + cls);
         }
 
         Class<T> impl = cls;
-        if (context.implMap.get(cls) != null) {
-            impl = context.implMap.get(cls);
+        if (context.getImplCls(cls) != null) {
+            impl = context.getImplCls(cls);
         }
         T resultObject = impl.newInstance();
 
@@ -172,213 +251,151 @@ public class JSON {
             final String key = ReflectUtils.getKeyNameFromSetMethod(method);
             if (key != null && !key.isEmpty()) {
                 Object value = jsonObject.get(key);
-                Object result = null ;
+                Object result = null;
                 if (value == null) continue;
-                //如果方法中有泛型，但只支持实现了 Collection 接口的泛型
-                if(value instanceof JSONArray && method.getGenericParameterTypes().length == 1){
-                    result = bind((JSONArray) value,new TypeReference(method.getGenericParameterTypes()[0]){}, context);
+                //如果方法中有泛型
+                // ，但只支持实现了 Collection 接口的泛型
 
-                }else {
-                    //如果有 JSONSerialize 的注解，最终得到会是已经被处理过的结果。
-                    JSONDeserialize jsonDeserialize = ReflectUtils.getAnnotation(method, JSONDeserialize.class);
-                    if (jsonDeserialize != null) {
-                        //获取注解中的using 类
-                        String className = jsonDeserialize.using().getName();
-                        //get class Name
-                        //获取 using 中的 泛型类。
-                        jsonDeserialize.using().getTypeParameters();
-                        CustomDeserializer deserializer = (CustomDeserializer) Class.forName(className).newInstance();
-                        result = deserializer.deserialize(value);
-                    }else {
-                        result = bind(value, value.getClass(), context);
-                    }
+                //如果有 JSONSerialize 的注解，最终得到会是已经被处理过的结果。
+                JSONDeserialize jsonDeserialize = ReflectUtils.getAnnotation(method, JSONDeserialize.class);
+                if (jsonDeserialize != null) {
+                    //获取注解中的using 类
+                    String className = jsonDeserialize.using().getName();
+
+                    //get class Name
+                    CustomDeserializer deserializer = (CustomDeserializer) Class.forName(className).newInstance();
+
+                    result = deserializer.deserialize(value);
+                } else {
+                    Type type = method.getParameterTypes()[0];
+                    result = bind(value, new TypeReference(type) {}, context);
                 }
 
-                method.invoke(resultObject,result);
+                method.invoke(resultObject, result);
             }
         }
 
         return resultObject;
     }
 
-    public static String stringify(Object o) {
-        if (o == null) {
-            return "null";
+
+    private static boolean isImplClass(Class cls) {
+        if (cls.isInterface() || Modifier.isAbstract(cls.getModifiers())) {
+            return false;
         }
-        if (o instanceof String) {
-            return stringify((String) (o));
-        } else if (o instanceof Number || o instanceof Boolean) {
-            return o.toString();
-        } else if (o instanceof Collection) {
-            return stringify((Collection) o);
-        } else if (o.getClass().isArray()) {
-            return stringifyWithArrayObject(o);
-        } else if (o instanceof Map) {
-            Map<?, ?> map = (Map<?, ?>) o;
-            return stringify(map);
-        } else {
-            return stringifySimpleObject(o);
-        }
+        return true;
     }
 
-    private static String stringify(String str) {
-        if (str == null) {
-            return null;
-        }
-        StringBuilder sb = new StringBuilder("\"");
-        for (int i = 0; i < str.length(); i++) {
-            Character character = str.charAt(i);
-            switch (character) {
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '/':
-                    sb.append("\\/");
-                    break;
-                case '\ufeff':
-                    break;
-                default:
-                    if ((character >= '\u0080' && character < '\u00a0')
-                            || (character >= '\u2000' && character < '\u2100')) {
-                        String h = Integer.toHexString(character);
-                        sb.append("\\u");
-                        for (int j = 0; j < 4 - h.length(); j++) {
-                            sb.append("0");
-                        }
-                        sb.append(h);
-                    } else {
-                        sb.append(character);
-                    }
-                    break;
+
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    private static <T> T bindArray(Object array, TypeReference valueTypeRef, JSONContext context) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException, ParseException, ClassNotFoundException {
+        Type type = valueTypeRef.getType();
+        if (type instanceof Class) {
+            Class<T> cls = (Class<T>) type;
+            return bind(array, cls, context);
+        } else if (type instanceof ParameterizedType) {
+            Class<T> cls = (Class<T>) ((ParameterizedType) type).getRawType();
+
+            if (!isImplClass(cls) && context.getImplCls(cls) == null) {
+                throw new CastException(cls + " is interface or abstract or implements Class not find ," + array.getClass() + " can not cast to " + cls);
             }
-        }
-        sb.append("\"");
-        return sb.toString();
-    }
 
-    private static String stringify(Collection collection) {
-        if (collection == null) {
-            return "";
-        } else if (collection.isEmpty()) {
-            return "[]";
-        }
-        StringBuilder sb = new StringBuilder("[");
-        for (Object obj : collection) {
-            sb.append(JSON.stringify(wrap(obj))).append(",");
-        }
-        sb.replace(sb.length() - 1, sb.length(), "]");
-        return sb.toString();
-    }
+            if (!(Collection.class.isAssignableFrom(cls))) {
+                throw new CastException(array.getClass() + " can not cast to " + cls.getClass());
+            }
+            Class<T> impl = cls;
+            if (context.getImplCls(cls) != null) {
+                impl = context.getImplCls(cls);
+            }
 
-    private static String stringifyWithArrayObject(Object obj) {
-        if (Array.getLength(obj) == 0) {
-            return "[]";
-        }
-        StringBuilder sb = new StringBuilder("[");
-        for (int i = 0; i < Array.getLength(obj); i++) {
-            sb.append(Array.get(obj, i)).append(",");
-        }
-        return sb.replace(sb.length() - 1, sb.length(), "]").toString();
-    }
+            Collection resultCollection = (Collection) impl.newInstance();
 
-    private static String stringify(Map<?, ?> map) {
-        if (map == null) {
-            return "";
-        } else if (map.isEmpty()) {
-            return "{}";
-        }
+            Type type2 = ((ParameterizedType) type).getActualTypeArguments()[0];
 
-        StringBuilder sb = new StringBuilder("{");
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            sb.append(JSON.stringify(entry.getKey())).append(":").append(JSON.stringify(entry.getValue())).append(",");
-        }
-        sb.replace(sb.length() - 1, sb.length(), "}");
-        return sb.toString();
-    }
-
-    private static String stringifySimpleObject(Object o) {
-        assert o != null;
-        //普通的 Object 对象
-        try {
-            StringBuilder sb = new StringBuilder("{");
-            List<Method> methodList = ReflectUtils.getMethods(o);
-            for (Method method : methodList) {
-                final String key = ReflectUtils.getKeyNameFromGetMethod(method);
-                if (key != null && !key.isEmpty()) {
-                    Object result = method.invoke(o);
-                    if (result == null) {
-                        continue;
+            if (Collection.class.isAssignableFrom(array.getClass())) {
+                Collection arrayCollection = (Collection) array;
+                for (Object o : arrayCollection) {
+                    if (type2 instanceof ParameterizedType) {
+                        resultCollection.add(bind(o, new TypeReference(type2) {
+                        }, context));
+                    } else {
+                        resultCollection.add(bind(o, (Class<T>) type2, context));
                     }
-                    //如果有 JSONSerialize 的注解，最终得到会是已经被处理过的结果。
-                    JSONSerialize jsonSerialize = ReflectUtils.getAnnotation(method, JSONSerialize.class);
-                    if (jsonSerialize != null) {
-                        //获取注解中的using 类
-                        String className = jsonSerialize.using().getName();
-                        //get class Name
-                        //获取 using 中的 泛型类。
-                        jsonSerialize.using().getTypeParameters();
-                        CustomSerializer serializer = (CustomSerializer) Class.forName(className).newInstance();
-                        result = serializer.serializeValue(result);
-                    }
-                    sb.append(stringify(key)).append(":").append(stringify(result)).append(",");
+                }
+                return (T) resultCollection;
+            }
+            if (array.getClass().isArray()) {
+                int size = Array.getLength(array);
+                for (int i = 0; i < size; i++) {
+                    resultCollection.add(bind(Array.get(array, i), (Class<T>) type2, context));
                 }
             }
-            return sb.replace(sb.length() - 1, sb.length(), "}").toString();
-        } catch (IllegalAccessException | InvocationTargetException | ClassNotFoundException | InstantiationException | ParseException e) {
-            e.printStackTrace();
-            return null;
+
+            return (T) resultCollection;
         }
+        throw new CastException(array.getClass() + " can not cast to " + type);
 
     }
 
-    public static Object wrap(Object object) {
-        try {
+    @SuppressWarnings(value = {"unchecked", "rawtypes"})
+    private static <T> T bindObj(Map<?,?> map, TypeReference valueTypeRef, JSONContext context) throws InvocationTargetException, CastException, InstantiationException, IllegalAccessException, ParseException, ClassNotFoundException {
+        Type type = valueTypeRef.getType();
+        if (type instanceof Class) {
+            Class<T> cls = (Class<T>) type;
+            return bind(map, cls, context);
+        } else if (type instanceof ParameterizedType) {
+            Class<T> cls = (Class<T>) ((ParameterizedType) type).getRawType();
 
-            if (object instanceof JSONObject || object instanceof JSONArray
-
-                    || object instanceof Byte || object instanceof Character
-                    || object instanceof Short || object instanceof Integer
-                    || object instanceof Long || object instanceof Boolean
-                    || object instanceof Float || object instanceof Double
-                    || object instanceof String || object instanceof BigInteger
-                    || object instanceof BigDecimal || object instanceof Enum) {
-                return object;
+            if (!isImplClass(cls) && context.getImplCls(cls) == null) {
+                throw new CastException(cls + " is interface or abstract or implements Class not find ," + cls.getClass() + " can not cast to " + cls);
             }
 
-            if (object instanceof Collection) {
-                Collection<?> coll = (Collection<?>) object;
-                return JSONArray.fromObject(coll);
+            if (!(Map.class.isAssignableFrom(cls))) {
+                throw new CastException(map.getClass() + " can not cast to " + cls.getClass());
             }
-            if (object.getClass().isArray()) {
-                return JSONArray.fromObject(object);
-            }
-            if (object instanceof Map) {
-                Map<?, ?> map = (Map<?, ?>) object;
-                return JSONObject.fromObject(map);
+            Class<T> impl = cls;
+            if (context.getImplCls(cls) != null) {
+                impl = context.getImplCls(cls);
             }
 
-            return JSONObject.fromObject(object);
-        } catch (Exception exception) {
-            return null;
+            Type valueType = ((ParameterizedType) type).getActualTypeArguments()[1];
+
+            Map resultMap = (Map) impl.newInstance();
+            for(Map.Entry<?,?> member : map.entrySet()){
+
+                String key = member.getKey().toString();
+
+
+                if(valueType instanceof Class){
+                    resultMap.put(key, bind(member.getValue(),
+                            (Class<?>) valueType, context));
+                }else {
+                    resultMap.put(key, bind(member.getValue(),
+                            new TypeReference(valueType) {}, context));
+                }
+            }
+
+            return (T) resultMap;
         }
+        throw new CastException(map.getClass() + " can not cast to " + type);
+    }
+
+    @SuppressWarnings("uncheck")
+    private static boolean isArray(Class cls) {
+        if (cls.isArray() || Collection.class.isAssignableFrom(cls)) {
+            return true;
+        }
+        return false;
+    }
+
+    public static String stringify(Object o) {
+        return StringifyUtils.Stringify(o);
+    }
+
+    public static JSONWriter stringify(Object o, Writer out) throws IOException {
+        JSONWriter jsonWriter = new JSONWriter(out);
+        jsonWriter.value(o);
+        return jsonWriter;
     }
 
 }

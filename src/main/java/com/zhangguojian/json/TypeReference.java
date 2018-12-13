@@ -1,15 +1,14 @@
 package com.zhangguojian.json;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 
 
 /**
  * 可以参考 http://gafter.blogspot.com/2006/12/super-type-tokens.html 这篇文章
- * @param <T>
+ * @param <E>
  */
-public abstract class TypeReference<T> implements Comparable<TypeReference<T>> {
+public abstract class TypeReference<E> implements Comparable<TypeReference<E>> {
 
     private final Type _type;
 
@@ -32,7 +31,7 @@ public abstract class TypeReference<T> implements Comparable<TypeReference<T>> {
     }
 
     @Override
-    public int compareTo(TypeReference<T> o) {
+    public int compareTo(TypeReference<E> o) {
         return 0;
     }
 }

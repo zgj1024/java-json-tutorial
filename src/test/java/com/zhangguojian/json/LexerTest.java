@@ -4,6 +4,8 @@ import com.zhangguojian.json.exception.InvalidCharacterException;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
@@ -24,7 +26,18 @@ public class LexerTest {
     }
 
     @Test
-    public void testGetNullToken() throws InvalidCharacterException {
+    public void testNullInput(){
+        String nullStr = null;
+        assertThatThrownBy(() -> new Lexer(nullStr))
+                .isInstanceOf(NullPointerException.class);
+
+        StringReader reader = null;
+        assertThatThrownBy(() -> new Lexer(reader))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    public void testGetNullToken() throws InvalidCharacterException, IOException {
         assertThat(new Lexer("null").getNextToken())
                 .isEqualTo(Token.NULL);
 
@@ -36,10 +49,8 @@ public class LexerTest {
                 .isInstanceOf(InvalidCharacterException.class);
     }
 
-
-
     @Test
-    public void testEOF() throws InvalidCharacterException {
+    public void testEOF() throws InvalidCharacterException, IOException {
         Lexer lexer = new Lexer("\r \t \n ");
         Assert.assertEquals(lexer.getNextToken(), Token.EOF);
     }
@@ -61,7 +72,7 @@ public class LexerTest {
     }
 
     @Test
-    public void testBoolean() throws InvalidCharacterException {
+    public void testBoolean() throws InvalidCharacterException, IOException {
         assertThat(new Lexer("true").getNextToken()).isEqualTo(Token.TRUE);
         assertThat(new Lexer("false").getNextToken()).isEqualTo(Token.FALSE);
 
@@ -92,7 +103,7 @@ public class LexerTest {
     }
 
     @Test
-    public void testString() throws InvalidCharacterException {
+    public void testString() throws InvalidCharacterException, IOException {
         assertThat(new Lexer("\"\"").getNextToken().text)
                 .isEqualTo("");
 
@@ -132,7 +143,7 @@ public class LexerTest {
     }
 
     @Test
-    public void testNum() throws InvalidCharacterException {
+    public void testNum() throws InvalidCharacterException, IOException {
         assertThat(new Lexer("0.14159").getNextToken().text).isEqualTo("0.14159");
         assertThat(new Lexer("12345").getNextToken().text).isEqualTo("12345");
         assertThat(new Lexer("-12345").getNextToken().text).isEqualTo("-12345");
@@ -153,23 +164,23 @@ public class LexerTest {
     }
 
     @Test
-    public void testArray() throws InvalidCharacterException {
+    public void testArray() throws InvalidCharacterException, IOException {
         Lexer lexer = new Lexer("[1,2]");
-        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.LB);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.BEGIN_ARRAY);
 
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COMMA);
 
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
 
-        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RB);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.END_ARRAY);
     }
 
     @Test
-    public void testObject() throws InvalidCharacterException {
+    public void testObject() throws InvalidCharacterException, IOException {
         Lexer lexer = new Lexer("{\"name\":\"John Smith\",\"age\":15 }");
 
-        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.LP);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.BEGIN_OBJ);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COLON);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
@@ -177,7 +188,16 @@ public class LexerTest {
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.STR);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.COLON);
         assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.NUM);
-        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.RP);
+        assertThat(lexer.getNextToken().tokenType).isEqualTo(TokenType.END_OBJ);
 
+    }
+
+    @Test
+    public void testLocationString() throws InvalidCharacterException, IOException {
+        Lexer lexer = new Lexer("\r\t\"123123\"\n\"123\"\n\n");
+        lexer.getNextToken();
+        assertThat(lexer.location()).isEqualTo(" at line 1 column 10 ");
+        lexer.getNextToken();
+        assertThat(lexer.location()).isEqualTo(" at line 2 column 6 ");
     }
 }

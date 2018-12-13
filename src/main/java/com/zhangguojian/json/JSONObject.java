@@ -1,48 +1,53 @@
 package com.zhangguojian.json;
 
-import com.zhangguojian.json.exception.CastException;
-import com.zhangguojian.json.exception.JSONException;
-import com.zhangguojian.json.exception.NullException;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 
-public class JSONObject<K, V> extends HashMap<K, V> {
+public class JSONObject implements JSONElement{
 
-    public static final JSONObject<String, Object> EMPTY = new JSONObject<>();
+    private final TreeMap<String, JSONElement> members =
+            new TreeMap<>();
 
-    public static JSONObject fromObject(String input) throws JSONException {
-        return new Parser(input).parse().objectValue();
+    public static final JSONObject EMPTY = new JSONObject();
+
+    public TreeMap<String, JSONElement> getMembers() {
+        return members;
     }
 
-    public static <K, V> JSONObject<String, Object> fromObject(Map<K, V> map) throws JSONException {
-        if (map == null) {
-            return new JSONObject<>();
-        } else {
-            JSONObject<String, Object> jsonObject = new JSONObject<>(map.size());
-            for (final Entry<K, V> e : map.entrySet()) {
-                if (e.getKey() == null) {
-                    throw new NullException("Null key.");
-                }
-                final Object value = e.getValue();
-                if (value != null) {
-                    jsonObject.put(String.valueOf(e.getKey()), JSON.wrap(value));
-                }
-            }
-            return jsonObject;
+    @Override
+    public boolean isJSONObject() {
+        return true;
+    }
+
+    @Override
+    public JSONObject getAsJSONObject() {
+        return this;
+    }
+
+    @Override
+    public String stringify() {
+        return StringifyUtils.Stringify(members);
+    }
+
+    public static JSONObject of(Map<?,?> map){
+        JSONObject jsonObject = new JSONObject();
+        for(Map.Entry<?,?> element:map.entrySet()){
+            jsonObject.add(element.getKey().toString(), JSONElement.of(element.getValue()));
         }
+        return jsonObject;
     }
 
-    public static JSONObject<String, Object> fromObject(Object bean) throws JSONException {
-        JSONObject<String, Object> jsonObject = new JSONObject<>();
-
+    public static JSONObject of(Object bean){
+        if(bean instanceof Map){
+            return of((Map)bean);
+        }
+        JSONObject jsonObject = new JSONObject();
         List<Method> methodList = ReflectUtils.getMethods(bean);
         for (Method method : methodList) {
             final String key = ReflectUtils.getKeyNameFromGetMethod(method);
@@ -50,7 +55,7 @@ public class JSONObject<K, V> extends HashMap<K, V> {
                 try {
                     final Object result = method.invoke(bean);
                     if (result != null) {
-                        jsonObject.put(key, JSON.wrap(result));
+                        jsonObject.add(key, JSONElement.of(result));
                         // we don't use the result anywhere outside asList wrap
                         // if it's a resource we should be sure to close it
                         // after calling toString
@@ -72,85 +77,82 @@ public class JSONObject<K, V> extends HashMap<K, V> {
     }
 
 
-    public JSONObject( int size){
-            super(size);
+    @Override
+    public JSONObject deepCopy() {
+        JSONObject result = new JSONObject();
+        for (Map.Entry<String, JSONElement> entry : members.entrySet()) {
+            result.add(entry.getKey(), entry.getValue().deepCopy());
         }
+        return result;
+    }
 
-    public JSONObject() {
-            super();
-        }
-
-
-    private <T> T castBase(String key, Class<T> classz) throws NullException, CastException {
-        Object v = get(key);
-        if (classz.isInstance(v)) {
-            return (T) v;
-        }
-        if (v == null) {
-            throw new NullException("JSONObject[" + key + "] is null");
-        } else {
-            throw new CastException("JSONObject[" + key + "] is not a " + classz + " , but is " + v.getClass());
+    public void add(String property, JSONElement value) {
+        if (value == null) {
+            members.put(property, JSONNull.INSTANCE);
+        }else {
+            members.put(property, value);
         }
     }
 
-    public boolean getBoolean(String key) throws NullException, CastException {
-        return castBase(key, Boolean.class);
+    public JSONElement remove(String property) {
+        return members.remove(property);
     }
 
-    public String getString(String key) throws NullException, CastException {
-        return castBase(key, String.class);
+    public void addProperty(String property, String value) {
+        add(property, value==null?JSONNull.INSTANCE:JSONPrimitive.of(value));
     }
 
-    public byte getByte(String key) throws NullException, CastException {
-        return castBase(key, Number.class).byteValue();
+    public void addProperty(String property, Number value) {
+        add(property, value==null?JSONNull.INSTANCE:JSONPrimitive.of(value));
     }
 
-    public short getShort(String key) throws NullException, CastException {
-        return castBase(key, Number.class).shortValue();
+    public void addProperty(String property, Boolean value) {
+        add(property, value==null?JSONNull.INSTANCE:JSONPrimitive.of(value));
     }
 
-    public int getInt(String key) throws NullException, CastException {
-        return castBase(key, Number.class).intValue();
+    public void addProperty(String property, Character value) {
+        add(property, value==null?JSONNull.INSTANCE:JSONPrimitive.of(value));
     }
 
-    public long getLong(String key) throws NullException, CastException {
-        return castBase(key, Number.class).longValue();
+    public Set<Map.Entry<String, JSONElement>> entrySet() {
+        return members.entrySet();
     }
 
-    public float getFloat(String key) throws NullException, CastException {
-        return castBase(key, Number.class).floatValue();
+    public Set<String> keySet() {
+        return members.keySet();
     }
 
-    public double getDouble(String key) throws NullException, CastException {
-        return castBase(key, Number.class).doubleValue();
+    public int size() {
+        return members.size();
     }
 
-    public BigInteger getBigInt(String key) throws NullException, CastException {
-        Object o = get(key);
-        if (o instanceof BigInteger) {
-            return (BigInteger) o;
-        }
-        return BigInteger.valueOf(castBase(key, Long.class));
+    public boolean has(String memberName) {
+        return members.containsKey(memberName);
     }
 
-    public BigDecimal getBigDecimal(String key) throws NullException, CastException {
-        Object o = get(key);
-        if (o instanceof BigDecimal) {
-            return (BigDecimal) o;
-        }
-        return new BigDecimal(castBase(key, Double.class));
+    public JSONElement get(String memberName) {
+        return members.get(memberName);
     }
 
-    public JSONObject getJSONObject(String key) throws NullException, CastException {
-        return castBase(key, JSONObject.class);
+    public JSONElement getAsJsonPrimitive(String memberName) {
+        return members.get(memberName);
     }
 
-    public JSONArray getJSONArray(String key) throws NullException, CastException {
-        return castBase(key, JSONArray.class);
+    public JSONArray getAsJsonArray(String memberName) {
+        return (JSONArray) members.get(memberName);
+    }
+
+    public JSONObject getAsJsonObject(String memberName) {
+        return (JSONObject) members.get(memberName);
     }
 
     @Override
-    public String toString() {
-        return JSON.stringify(this);
+    public boolean equals(Object o) {
+        return (o == this) || (o instanceof JSONObject && ((JSONObject) o).members.equals(members));
+    }
+
+    @Override
+    public int hashCode() {
+        return members.hashCode();
     }
 }

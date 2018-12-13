@@ -1,6 +1,5 @@
 package com.zhangguojian.json.serializer;
 
-
 import com.zhangguojian.json.CustomSerializer;
 
 import java.text.DateFormat;
@@ -9,7 +8,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class DateSerializer implements CustomSerializer<Date,String> {
-    private  static  DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private final static DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public String serializeValue(Date input) throws ParseException {
