@@ -11,7 +11,7 @@ public class DateSerializer implements CustomSerializer<Date,String> {
     private final static DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
     @Override
-    public String serializeValue(Date input) throws ParseException {
+    public synchronized String serializeValue(Date input) throws ParseException {
         return sdf.format(input);
     }
 }
